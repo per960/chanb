@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Operator Dashboard</title>
+    <title>Operator Dashboard - Channel Manager</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -13,7 +13,6 @@
         :root { --bg-black: #000000; --bg-dark-gray: #121212; --bg-card: #1c1c1e; --accent-red: #ff0000; --text-main: #ffffff; --text-muted: #a1a1a6; --border-color: #2c2c2e; }
         
         body, html { margin: 0; padding: 0; background-color: var(--bg-black); color: var(--text-main); font-family: 'Inter', sans-serif; box-sizing: border-box; min-height: 100vh; }
-        
         .container { display: flex; flex-direction: column; width: 100%; max-width: 1000px; margin: 0 auto; background-color: var(--bg-dark-gray); padding: 12px; box-sizing: border-box; min-height: 100vh; }
         
         .login-wrapper { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #0f0f0f; display: flex; justify-content: center; align-items: center; z-index: 9999; }
@@ -42,27 +41,25 @@
         #preview-canvas { width: 1920px; height: 1080px; position: absolute; top: 0; left: 0; transform-origin: top left; pointer-events: auto; }
         
         .prev-item { position: absolute; display: flex; flex-direction: row; gap: 15px; align-items: center; justify-content: center; font-weight: 900; border-radius: 0px; transition: transform 0.1s ease, width 0.1s ease, height 0.1s ease, color 0.1s ease; white-space: pre-wrap; line-height: 1.1; text-align: center; cursor: pointer; pointer-events: auto; }
-        
         .edit-icon { position: relative; background: #0a84ff; color: white; border-radius: 50%; width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; z-index: 100; font-size: 22px; opacity: 1; transition: 0.2s; pointer-events: none; border: 3px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.6); flex-shrink: 0; }
         .prev-item:hover .edit-icon { background: var(--accent-red); transform: scale(1.15); }
         .prev-item.active-edit { outline: 6px solid var(--accent-red) !important; z-index: 99 !important; }
 
         .editor-scrollable-controls { width: 100%; padding-bottom: 40px; }
-
         .element-edit-group { display: none; animation: fadeIn 0.3s; background: #151517; border: 1px solid #333; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
         .element-edit-group.active { display: block; }
         .element-edit-group h3 { color: var(--accent-red); margin-top: 0; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 12px; font-size: 15px; }
         .element-edit-group h4 { color: #a1a1a6; margin-top: 15px; margin-bottom: 8px; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #282828; padding-bottom: 4px; }
 
         #master-save-wrapper { width: 100%; margin-top: 12px; margin-bottom: 5px; }
-
         label { display: block; font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; margin-left: 2px; }
         
-        input[type="text"], textarea { width: 100%; padding: 10px 12px; margin-bottom: 12px; background-color: var(--bg-black); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-size: 14px; outline: none; box-sizing: border-box; font-family: inherit;}
+        input[type="text"], textarea, select { width: 100%; padding: 10px 12px; margin-bottom: 12px; background-color: var(--bg-black); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-size: 14px; outline: none; box-sizing: border-box; font-family: inherit;}
         textarea { resize: none; overflow-y: hidden; word-break: break-all; min-height: 44px; }
 
         .action-btn { width: 100%; padding: 14px; background-color: var(--accent-red); color: white; border: none; border-radius: 8px; font-weight: 700; font-size:15px; cursor: pointer; transition: background-color 0.3s ease; }
-        .test-btn { background-color: #2c2c2e; margin-bottom: 15px; } .test-btn:hover { background-color: #3a3a3c; }
+        .test-btn { background-color: #2c2c2e; margin-bottom: 10px; } .test-btn:hover { background-color: #3a3a3c; }
+        .browse-btn { background-color: #0a84ff; margin-bottom: 15px; } .browse-btn:hover { background-color: #0070e0; }
         
         .table-wrapper { width: 100%; } 
         table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
@@ -94,6 +91,10 @@
         input[type="color"] { width: 100%; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: #111; padding: 2px; margin-bottom: 8px; }
         .dual-color { display: flex; gap: 5px; }
 
+        /* Stream Settings Box */
+        .stream-status-box { background: #990000; color: #fff; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-top: 15px; display: none; }
+        .stream-status-box.active { display: block; background: #1db954; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
@@ -124,6 +125,7 @@
             <button class="tab-btn" onclick="switchTab('advt_text', this, 'text')"><i class="fa-solid fa-ad"></i> Ads Scroll</button>
             <button class="tab-btn" onclick="switchTab('slider_playlist', this, 'promo')"><i class="fa-solid fa-images"></i> Top Promo</button>
             <button class="tab-btn" onclick="switchTab('overlay_settings', this, 'controls')"><i class="fa-solid fa-gamepad"></i> Layout Editor</button>
+            <button class="tab-btn" onclick="switchTab('stream_settings', this, 'stream')"><i class="fa-solid fa-tower-broadcast"></i> Stream Settings</button>
         </div>
 
         <div class="admin-card">
@@ -133,8 +135,11 @@
                     <iframe id="test-player" width="100%" height="250" src="" frameborder="0" allowfullscreen></iframe>
                 </div>
                 <button class="action-btn test-btn" onclick="testCurrentURL()"><i class="fa-solid fa-magnifying-glass"></i> Test Player</button>
+                
                 <label>Source URL (YouTube or MP4)</label>
                 <textarea id="input-url" placeholder="Paste link here..." rows="2"></textarea>
+
+                <button class="action-btn browse-btn" type="button" onclick="browseLocalFile()"><i class="fa-solid fa-folder-open"></i> Browse Local File (USB / Storage)</button>
                 
                 <div class="checkbox-group" style="display:none;"><input type="checkbox" id="auto-start-checkbox" checked><span>Auto-chain end time to next start time</span></div>
                 
@@ -149,7 +154,6 @@
                     <textarea id="input-name" placeholder="Enter title..." rows="1"></textarea>
                 </div>
 
-                <!-- Default position for the Save Button Wrapper so it shows on load -->
                 <div id="master-save-wrapper">
                     <button id="add-btn" class="action-btn" style="margin-bottom:0;"><i class="fa-solid fa-save"></i> Save Changes</button>
                     <button id="cancel-edit-btn" class="action-btn" style="background:#2c2c2e; display:none; margin-top:10px;">Cancel Edit</button>
@@ -168,6 +172,62 @@
             <div id="form-promo" class="form-group">
                 <label>Promo Image / Video URL</label>
                 <textarea id="new-promo-url" placeholder="Paste Image/MP4 link here..." rows="2"></textarea>
+            </div>
+
+            <div id="form-stream" class="form-group">
+                <h3 style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #333;"><i class="fa-solid fa-tower-broadcast" style="color:var(--accent-red);"></i> Streaming Settings</h3>
+                
+                <label>Format</label>
+                <select id="stream-format">
+                    <option value="RTMP">RTMP Streaming (YouTube, Facebook, Twitch, Ustream)</option>
+                    <option value="UDP">UDP Multicast Streaming (Local Network)</option>
+                    <option value="RTSP">RTSP Streaming Output</option>
+                    <option value="HLS">HLS Segmented Output</option>
+                </select>
+
+                <div class="input-row">
+                    <div>
+                        <label>Video Codec</label>
+                        <select id="stream-vcodec">
+                            <option value="libx264">H.264 / AVC (Standard)</option>
+                            <option value="copy">Stream Copy (No Transcode)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Video Bitrate</label>
+                        <input type="text" id="stream-vbitrate" value="1.5M">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div>
+                        <label>Audio Codec</label>
+                        <select id="stream-acodec">
+                            <option value="aac">AAC (Advanced Audio Coding)</option>
+                            <option value="copy">Audio Copy</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Audio Bitrate</label>
+                        <input type="text" id="stream-abitrate" value="128K">
+                    </div>
+                </div>
+
+                <label>Publishing Point (URL)</label>
+                <input type="text" id="stream-url" placeholder="rtmp://a.rtmp.youtube.com/live2 or udp://239.1.1.1:1234">
+
+                <label>Stream Key (If Applicable)</label>
+                <input type="text" id="stream-key" placeholder="Your stream key...">
+
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button class="action-btn" style="background:#28a745; flex:1;" onclick="startNativeStream()"><i class="fa-solid fa-play"></i> START STREAM</button>
+                    <button class="action-btn" style="background:#ff453a; flex:1;" onclick="stopNativeStream()"><i class="fa-solid fa-stop"></i> STOP STREAM</button>
+                </div>
+
+                <div id="stream-status-console" class="stream-status-box">
+                    State: <span id="stream-state-text">Stopped</span><br>
+                    <span id="publishing-point-text" style="font-weight:normal; font-size:12px;">Publishing Point: None</span>
+                </div>
             </div>
 
             <div id="form-controls" class="form-group">
@@ -674,13 +734,67 @@ NEWS</textarea>
             }
         };
 
+        // Bridge to Native Android USB File Picker
+        window.browseLocalFile = function() {
+            if (window.AndroidBridge && window.AndroidBridge.pickLocalMedia) {
+                window.AndroidBridge.pickLocalMedia();
+            } else {
+                alert("Local file browser available inside the Android TV app.");
+            }
+        };
+
+        // Called by Android Native Code when local file is chosen
+        window.onLocalFileSelected = function(fileUri, fileName) {
+            const inputUrl = document.getElementById('input-url');
+            if (inputUrl) {
+                inputUrl.value = fileUri;
+                const inputName = document.getElementById('input-name');
+                if (inputName && !inputName.value) inputName.value = fileName || "Local Video";
+            }
+        };
+
+        // Stream Control Functions connecting to Android Native
+        window.startNativeStream = function() {
+            const format = document.getElementById('stream-format').value;
+            const url = document.getElementById('stream-url').value.trim();
+            const key = document.getElementById('stream-key').value.trim();
+            const fullDest = key ? `${url}/${key}` : url;
+
+            if (!fullDest) { alert("Please enter a Publishing Point / Stream URL"); return; }
+
+            const consoleBox = document.getElementById('stream-status-console');
+            const stateText = document.getElementById('stream-state-text');
+            const ptText = document.getElementById('publishing-point-text');
+            
+            consoleBox.classList.add('active');
+            stateText.textContent = "eMS_Running";
+            ptText.textContent = `Publishing Point: ${fullDest} (${format})`;
+
+            if (window.AndroidBridge && window.AndroidBridge.startStreaming) {
+                window.AndroidBridge.startStreaming(format, fullDest);
+            } else {
+                alert("Streaming execution relies on the Android TV Box background service.");
+            }
+        };
+
+        window.stopNativeStream = function() {
+            const consoleBox = document.getElementById('stream-status-console');
+            const stateText = document.getElementById('stream-state-text');
+            
+            consoleBox.classList.remove('active');
+            stateText.textContent = "Stopped";
+            
+            if (window.AndroidBridge && window.AndroidBridge.stopStreaming) {
+                window.AndroidBridge.stopStreaming();
+            }
+        };
+
         const inputUrl = document.getElementById('input-url'); 
         const inputStart = document.getElementById('input-start'); 
         const inputDuration = document.getElementById('input-duration'); 
         const inputEnd = document.getElementById('input-end'); 
         const autoSetNext = document.getElementById('auto-start-checkbox');
         
-        // Expose timeToSec globally so highlight feature can use it
         window.timeToSec = function(t) { const [h, m, s] = (t || '00:00:00').split(':').map(Number); return (h * 3600) + (m * 60) + s; }
         function secToTime(s) { let h = Math.floor(s / 3600); let m = Math.floor((s % 3600) / 60); let sec = Math.floor(s % 60); return [h, m, sec].map(v => String(v).padStart(2, '0')).join(':'); }
         
@@ -763,7 +877,7 @@ NEWS</textarea>
             const adminCard = document.querySelector('.admin-card');
             const saveWrapper = document.getElementById('master-save-wrapper');
 
-            const formMap = { 'video': 'form-video', 'promo': 'form-promo', 'controls': 'form-controls', 'text': 'form-text' };
+            const formMap = { 'video': 'form-video', 'promo': 'form-promo', 'controls': 'form-controls', 'text': 'form-text', 'stream': 'form-stream' };
             const targetForm = formMap[type] || 'form-text';
             
             document.getElementById(targetForm).classList.add('active'); 
@@ -772,6 +886,8 @@ NEWS</textarea>
                 document.querySelector('.preview-fixed-header').appendChild(saveWrapper);
                 adminCard.classList.add('full-height');
                 setTimeout(resizePreview, 60); 
+            } else if (type === 'stream') {
+                adminCard.classList.remove('full-height');
             } else { 
                 document.getElementById(targetForm).appendChild(saveWrapper);
                 adminCard.classList.remove('full-height');
@@ -781,13 +897,15 @@ NEWS</textarea>
                 }
             }
             
-            document.getElementById('table-wrapper').style.display = (type === 'controls') ? 'none' : 'block';
+            document.getElementById('table-wrapper').style.display = (type === 'controls' || type === 'stream') ? 'none' : 'block';
             
-            loadData().then(() => {
-                setTimeout(() => {
-                    document.querySelectorAll('.form-group.active textarea').forEach(el => autoResizeTextarea(el));
-                }, 50);
-            });
+            if(type !== 'stream') {
+                loadData().then(() => {
+                    setTimeout(() => {
+                        document.querySelectorAll('.form-group.active textarea').forEach(el => autoResizeTextarea(el));
+                    }, 50);
+                });
+            }
         };
 
         function startEditMode(id) {
@@ -839,7 +957,6 @@ NEWS</textarea>
             return div;
         }
 
-        // Live Row Highlighter Function
         window.highlightCurrentVideo = function() {
             if (currentTable !== 'url_playlist') return;
             const now = new Date();
@@ -871,7 +988,6 @@ NEWS</textarea>
                 }
             });
         };
-        // Re-check highlight every 10 seconds
         setInterval(highlightCurrentVideo, 10000);
 
         async function loadData() {
@@ -1007,7 +1123,7 @@ NEWS</textarea>
                     html += `<tr><td>${item.start}</td><td>${item.duration}</td><td><a class="name-text" href="${item.url}" target="_blank">${displayName}</a></td><td><button class="btn-sm edit-btn" onclick="editVideo(${item.id}, '${safeUrl}', '${item.start}', '${item.duration}', '${item.end}', '${safeName}')"><i class="fa-solid fa-pen"></i></button><button class="btn-sm delete-btn" onclick="deleteEntry(${item.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`; 
                 });
                 dataList.innerHTML = html + '</tbody></table>';
-                highlightCurrentVideo(); // check highlight after rendering table
+                highlightCurrentVideo();
             } else {
                 dataList.innerHTML = '';
                 (data || []).forEach(item => {
@@ -1165,7 +1281,7 @@ NEWS</textarea>
                 loadData(); 
             } else {
                 console.error(error);
-                alert("Database Error: " + error.message + "\n\n(Did you create the 'name' column in Supabase?)");
+                alert("Database Error: " + error.message);
             }
         });
         
