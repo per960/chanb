@@ -7,6 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Added HLS.js for .m3u8 stream support in the HTML5 player -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
     <style>
         :root { --primary-bg: #000000; --text-light: #ffffff; --font-main: 'Roboto', sans-serif; }
@@ -15,6 +17,10 @@
         main { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
         .player-wrapper { position: relative; width: 100%; height: 100%; max-width: calc(100vh * (16 / 9)); max-height: calc(100vw * (9 / 16)); background-color: #000; overflow: hidden; aspect-ratio: 16 / 9; }
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; pointer-events: none; }
+        
+        /* Added CSS for the HTML5 Video Player */
+        #html5-player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; object-fit: fill; display: none; background: #000; pointer-events: none; }
+
         #overlay-scaler { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: top left; pointer-events: none; z-index: 10; }
         #top-image-slider { position: absolute; top: 0; left: 0; width: 100%; height: 160px; z-index: 50; background-color: transparent; overflow: hidden; }
         @keyframes fadeInOut { 0%, 5% { opacity: 0; } 15%, 85% { opacity: 1; } 95%, 100% { opacity: 0; } }
@@ -47,6 +53,10 @@
 <body>
     <main>
         <section class="player-wrapper">
+            <!-- Added HTML5 Video Tag for Local & HLS Media -->
+            <video id="html5-player" crossorigin="anonymous" autoplay playsinline></video>
+            
+            <!-- Existing YouTube Iframe -->
             <iframe id="video-player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
             
             <div id="overlay-scaler">
@@ -105,6 +115,9 @@
         let breakTimeout1, breakTimeout2; 
         let aptsCurrentIndex = 0; let aptsTickerTimeout = null;
 
+        // Added HLS Instance tracking
+        let hlsInstance = null;
+
         // Called by Android MainActivity when launching playout
         window.startPlayout = function(opCode) {
             OPERATOR_CODE = (opCode || "").trim().toUpperCase();
@@ -115,8 +128,13 @@
         window.stopPlayout = function() {
             clearTimeout(syncInterval); clearTimeout(breakTimeout1); clearTimeout(breakTimeout2);
             clearTimeout(aptsTickerTimeout); clearTimeout(imageSliderInterval);
+            
             const player = document.getElementById('video-player');
             if (player) player.src = '';
+            
+            const hPlayer = document.getElementById('html5-player');
+            if (hPlayer) { hPlayer.pause(); hPlayer.removeAttribute('src'); }
+            if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
         };
 
         function getBg(c1, c2) { return c1 === c2 ? c1 : `linear-gradient(90deg, ${c1}, ${c2})`; }
@@ -403,26 +421,55 @@
             
             if (matchedIndex !== -1 && matchedIndex !== currentVideoIndex) {
                 currentVideoIndex = matchedIndex; 
-                const videoUrl = data.urlPlaylist[matchedIndex].url; let fullUrl = videoUrl;
+                const videoUrl = data.urlPlaylist[matchedIndex].url; 
                 let videoId = null; let playlistId = null;
+                let isYouTube = false;
+
                 try {
-                    let ytMatch = videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|live\/|shorts\/))([^&#?]+)/);
-                    if (ytMatch && ytMatch[1]) videoId = ytMatch[1];
+                    let ytMatch = videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|live\/|shorts\/|watch\?v=))([^&#?]+)/);
+                    if (ytMatch && ytMatch[1]) { videoId = ytMatch[1]; isYouTube = true; }
                     let parsed = new URL(videoUrl);
-                    if (parsed.searchParams.has('v')) videoId = parsed.searchParams.get('v');
-                    if (parsed.searchParams.has('list')) playlistId = parsed.searchParams.get('list');
+                    if (parsed.searchParams.has('v')) { videoId = parsed.searchParams.get('v'); isYouTube = true; }
+                    if (parsed.searchParams.has('list')) { playlistId = parsed.searchParams.get('list'); isYouTube = true; }
                 } catch(e){}
 
-                if (playlistId && !videoId) {
-                    fullUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=https://loc-sepia.vercel.app&start=${Math.floor(offsetSeconds)}`;
-                } else if (videoId) {
-                    fullUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=https://loc-sepia.vercel.app&start=${Math.floor(offsetSeconds)}`;
-                    if(playlistId) fullUrl += `&list=${playlistId}`;
+                const html5Player = document.getElementById('html5-player');
+                const ytPlayer = document.getElementById('video-player');
+
+                if (isYouTube) {
+                    // --- YOUTUBE: Use Iframe ---
+                    html5Player.style.display = 'none'; html5Player.pause(); html5Player.removeAttribute('src');
+                    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+                    ytPlayer.style.display = 'block';
+
+                    let fullUrl = videoUrl;
+                    if (playlistId && !videoId) {
+                        fullUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=https://loc-sepia.vercel.app&start=${Math.floor(offsetSeconds)}`;
+                    } else if (videoId) {
+                        fullUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=https://loc-sepia.vercel.app&start=${Math.floor(offsetSeconds)}`;
+                        if(playlistId) fullUrl += `&list=${playlistId}`;
+                    }
+                    ytPlayer.src = fullUrl;
                 } else {
-                    const sep = videoUrl.includes('?') ? '&' : '?';
-                    fullUrl += `${sep}autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1#t=${Math.floor(offsetSeconds)}`;
+                    // --- MP4 / MKV / M3U8: Use HTML5 Video Tag ---
+                    ytPlayer.style.display = 'none'; ytPlayer.src = '';
+                    html5Player.style.display = 'block';
+
+                    const isM3u8 = videoUrl.toLowerCase().includes('.m3u8');
+                    
+                    if (isM3u8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
+                        if (hlsInstance) { hlsInstance.destroy(); }
+                        hlsInstance = new Hls({ startPosition: offsetSeconds, enableWorker: true });
+                        hlsInstance.loadSource(videoUrl);
+                        hlsInstance.attachMedia(html5Player);
+                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() { html5Player.play().catch(()=>{}); });
+                    } else {
+                        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+                        html5Player.src = videoUrl;
+                        html5Player.currentTime = offsetSeconds;
+                        html5Player.play().catch(()=>{});
+                    }
                 }
-                const player = document.getElementById('video-player'); if (player) player.src = fullUrl;
             }
         }
 
