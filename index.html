@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Channel Manager</title>
+    <title>Operator Dashboard - Channel Manager</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -112,7 +112,7 @@
 
     <div id="dashboard" class="container" style="display:none;">
         <h1>
-            <div class="header-title-text">MY TV <span>PLAYOUT</span></div>
+            <div class="header-title-text">CHANNEL <span>MANAGER</span></div>
             <div style="font-size:11px; color:#aaa; border:1px solid #333; padding:4px 10px; border-radius:20px; font-weight:normal;">Code: <span id="display-code" style="color:#fff; font-weight:bold;"></span></div>
         </h1>
 
@@ -170,8 +170,8 @@
             </div>
 
             <div id="form-promo" class="form-group">
-                <label>Promo Image URL</label>
-                <textarea id="new-promo-url" placeholder="Paste Image link here..." rows="2"></textarea>
+                <label>Promo Image / Video URL</label>
+                <textarea id="new-promo-url" placeholder="Paste Image/MP4 link here..." rows="2"></textarea>
             </div>
 
             <div id="form-stream" class="form-group">
@@ -309,7 +309,7 @@
                         </div>
                         <div class="input-row">
                             <div>
-                                <label>Ads Logo URL (Image)</label>
+                                <label>Ads Logo URL</label>
                                 <textarea id="input-logo-news" placeholder="e.g., https://.../news.png" rows="2"></textarea>
                             </div>
                         </div>
@@ -331,7 +331,7 @@
                         </div>
                         <div class="input-row">
                             <div>
-                                <label>Channel Logo URL (Image)</label>
+                                <label>Channel Logo URL</label>
                                 <textarea id="input-logo-channel" placeholder="e.g., https://.../logo.png" rows="2"></textarea>
                             </div>
                         </div>
@@ -384,7 +384,7 @@
                         </div>
                         <div class="input-row">
                             <div>
-                                <label>Background Image (URL)</label>
+                                <label>Background Media (URL)</label>
                                 <textarea id="ticker1_media" placeholder="Leave empty for solid color..." rows="1"></textarea>
                             </div>
                         </div>
@@ -418,7 +418,7 @@
                         </div>
                         <div class="input-row">
                             <div>
-                                <label>Box Image (URL)</label>
+                                <label>Box Media (URL)</label>
                                 <textarea id="brk_box_media" placeholder="Leave empty for Text..." rows="1"></textarea>
                             </div>
                         </div>
@@ -1128,7 +1128,11 @@ NEWS</textarea>
                 dataList.innerHTML = '';
                 (data || []).forEach(item => {
                     if (currentTable === 'slider_playlist') {
-                        const mediaPreview = `<img src="${item.image}" style="width:100%; height:auto; border-radius:4px; display:block;">`;
+                        const isVideo = item.image && item.image.match(/\.(mp4|webm|ogg)$/i);
+                        const mediaPreview = isVideo 
+                            ? `<span style="font-size:11px; color:#aaa; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; display:inline-block;"><i class="fa-solid fa-video"></i> ${item.image}</span>`
+                            : `<img src="${item.image}" style="width:100%; height:auto; border-radius:4px; display:block;">`;
+                        
                         const safeImage = btoa(encodeURIComponent(item.image || ''));
                         dataList.appendChild(renderCard(item.id, mediaPreview, `editPromo(${item.id}, '${safeImage}')`));
                     } else {
