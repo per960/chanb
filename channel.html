@@ -13,8 +13,20 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: var(--primary-bg); width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; font-family: var(--font-main); overflow: hidden !important; touch-action: none; }
         main { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+        
         .player-wrapper { position: relative; width: 100%; height: 100%; max-width: calc(100vh * (16 / 9)); max-height: calc(100vw * (9 / 16)); background-color: #000; overflow: hidden; aspect-ratio: 16 / 9; }
-        .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; pointer-events: none; }
+        
+        /* Dual-Player Architecture for Zero-Latency Switching */
+        .player-layer { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            border: none; object-fit: fill; pointer-events: none; 
+            opacity: 0.001; z-index: 0; /* Hidden by default to allow background buffering */
+            transition: opacity 0.3s ease;
+        }
+        .player-layer.active {
+            opacity: 1 !important; z-index: 2 !important; /* Instantly snaps to front when active */
+        }
+
         #overlay-scaler { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: top left; pointer-events: none; z-index: 10; }
         #top-image-slider { position: absolute; top: 0; left: 0; width: 100%; height: 160px; z-index: 50; background-color: transparent; overflow: hidden; }
         @keyframes fadeInOut { 0%, 5% { opacity: 0; } 15%, 85% { opacity: 1; } 95%, 100% { opacity: 0; } }
@@ -47,7 +59,13 @@
 <body>
     <main>
         <section class="player-wrapper">
-            <iframe id="video-player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            
+            <!-- Raw HTML5 Player for Instant Local MP4/MKV Playback -->
+            <video id="html5-player" class="player-layer" crossorigin="anonymous" autoplay playsinline></video>
+            
+            <!-- Dual YouTube IFrames for Background Preloading -->
+            <iframe id="yt-player-1" class="player-layer" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+            <iframe id="yt-player-2" class="player-layer" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
             
             <div id="overlay-scaler">
                 <div id="top-image-slider">
@@ -101,11 +119,15 @@
 
         let OPERATOR_CODE = "";
         let data = { urlPlaylist: [], aptsText: [], advtText: [], sliderText: [], sliderPlaylist: [], settings: null };
-        let currentVideoIndex = -1; let syncIndex = 0; let syncInterval = null; let imageSlideIndex = 0; let imageSliderInterval = null;
-        let breakTimeout1, breakTimeout2; 
-        let aptsCurrentIndex = 0; let aptsTickerTimeout = null;
+        
+        let currentVideoIndex = -1; 
+        let syncIndex = 0; let syncInterval = null; let imageSlideIndex = 0; let imageSliderInterval = null;
+        let breakTimeout1, breakTimeout2; let aptsCurrentIndex = 0; let aptsTickerTimeout = null;
 
-        // Called by Android MainActivity when launching playout
+        // Player Tracking Variables
+        let activeYtPlayer = 1; 
+        let preloadedIndex = -1;
+
         window.startPlayout = function(opCode) {
             OPERATOR_CODE = (opCode || "").trim().toUpperCase();
             if (!OPERATOR_CODE) return;
@@ -115,8 +137,9 @@
         window.stopPlayout = function() {
             clearTimeout(syncInterval); clearTimeout(breakTimeout1); clearTimeout(breakTimeout2);
             clearTimeout(aptsTickerTimeout); clearTimeout(imageSliderInterval);
-            const player = document.getElementById('video-player');
-            if (player) player.src = '';
+            document.getElementById('html5-player').src = '';
+            document.getElementById('yt-player-1').src = '';
+            document.getElementById('yt-player-2').src = '';
         };
 
         function getBg(c1, c2) { return c1 === c2 ? c1 : `linear-gradient(90deg, ${c1}, ${c2})`; }
@@ -374,6 +397,34 @@
 
         function timeToSec(t) { if (!t) return 0; const [h, m, s] = t.split(':').map(Number); return (h * 3600) + (m * 60) + s; }
 
+        // --- DUAL PLAYER LOGIC UTILS ---
+        function isYouTubeUrl(url) {
+            return /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|live\/|shorts\/|watch\?v=))/.test(url);
+        }
+
+        function getYTUrl(videoUrl, offset, mute = false) {
+            let ytMatch = videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|live\/|shorts\/|watch\?v=))([^&#?]+)/);
+            let videoId = ytMatch ? ytMatch[1] : null;
+            let playlistId = null;
+            try { let p = new URL(videoUrl); if(p.searchParams.has('list')) playlistId = p.searchParams.get('list'); } catch(e){}
+
+            let url = `https://www.youtube.com/embed/${videoId || 'videoseries'}?autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+            if (playlistId) url += `&list=${playlistId}`;
+            if (mute) url += `&mute=1`; // Start muted so it buffers silently in the background
+            if (offset > 0) url += `&start=${Math.floor(offset)}`;
+            return url;
+        }
+
+        function sendYTCommand(iframe, func, args = []) {
+            if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage(JSON.stringify({
+                    'event': 'command',
+                    'func': func,
+                    'args': args
+                }), '*');
+            }
+        }
+
         function scheduleVideo() {
             if (!data.urlPlaylist || data.urlPlaylist.length === 0) return;
             const currentSec = timeToSec(new Date().toTimeString().slice(0, 8)); 
@@ -400,29 +451,71 @@
                     }
                 }
             }
-            
-            if (matchedIndex !== -1 && matchedIndex !== currentVideoIndex) {
-                currentVideoIndex = matchedIndex; 
-                const videoUrl = data.urlPlaylist[matchedIndex].url; let fullUrl = videoUrl;
-                let videoId = null; let playlistId = null;
-                try {
-                    let ytMatch = videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|live\/|shorts\/))([^&#?]+)/);
-                    if (ytMatch && ytMatch[1]) videoId = ytMatch[1];
-                    let parsed = new URL(videoUrl);
-                    if (parsed.searchParams.has('v')) videoId = parsed.searchParams.get('v');
-                    if (parsed.searchParams.has('list')) playlistId = parsed.searchParams.get('list');
-                } catch(e){}
 
-                if (playlistId && !videoId) {
-                    fullUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=https://loc-sepia.vercel.app&start=${Math.floor(offsetSeconds)}`;
-                } else if (videoId) {
-                    fullUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=https://loc-sepia.vercel.app&start=${Math.floor(offsetSeconds)}`;
-                    if(playlistId) fullUrl += `&list=${playlistId}`;
+            if (matchedIndex === -1) return;
+
+            // 1. BACKGROUND PRELOAD PHASE (Loads Next YouTube Video 12 seconds early)
+            let timeRemaining = timeToSec(data.urlPlaylist[matchedIndex].end) - currentSec;
+            if (timeRemaining < 0) timeRemaining += 86400; // Handle midnight wrap
+            
+            let nextIndex = (matchedIndex + 1) % data.urlPlaylist.length;
+            let nextVideoUrl = data.urlPlaylist[nextIndex].url;
+
+            if (timeRemaining <= 12 && preloadedIndex !== nextIndex && isYouTubeUrl(nextVideoUrl)) {
+                let standbyId = activeYtPlayer === 1 ? 'yt-player-2' : 'yt-player-1';
+                let standbyIframe = document.getElementById(standbyId);
+                
+                standbyIframe.src = getYTUrl(nextVideoUrl, 0, true); // Load muted in background
+                preloadedIndex = nextIndex;
+            }
+
+            // 2. SWITCHING PHASE (Instant Snapping)
+            if (matchedIndex !== currentVideoIndex) {
+                currentVideoIndex = matchedIndex; 
+                const videoUrl = data.urlPlaylist[matchedIndex].url;
+                
+                const html5Player = document.getElementById('html5-player');
+                const yt1 = document.getElementById('yt-player-1');
+                const yt2 = document.getElementById('yt-player-2');
+
+                // Hide all players temporarily during the switch
+                html5Player.classList.remove('active');
+                yt1.classList.remove('active');
+                yt2.classList.remove('active');
+                
+                if (isYouTubeUrl(videoUrl)) {
+                    html5Player.pause(); html5Player.src = ''; // Kill HTML5
+
+                    if (matchedIndex === preloadedIndex) {
+                        // PRELOADED SWITCH: Bring the standby player to the front instantly
+                        activeYtPlayer = activeYtPlayer === 1 ? 2 : 1; 
+                        let activeIframe = activeYtPlayer === 1 ? yt1 : yt2;
+                        let standbyIframe = activeYtPlayer === 1 ? yt2 : yt1;
+
+                        activeIframe.classList.add('active'); // Instantly show
+                        sendYTCommand(activeIframe, 'unMute'); // Turn on sound
+                        sendYTCommand(activeIframe, 'playVideo'); // Ensure it plays
+
+                        standbyIframe.src = ''; // Clear old video
+                    } else {
+                        // COLD SWITCH: (e.g. app just opened)
+                        let activeIframe = activeYtPlayer === 1 ? yt1 : yt2;
+                        let standbyIframe = activeYtPlayer === 1 ? yt2 : yt1;
+                        
+                        activeIframe.src = getYTUrl(videoUrl, offsetSeconds, false);
+                        activeIframe.classList.add('active'); // Show
+                        standbyIframe.src = ''; // Clear old
+                    }
                 } else {
-                    const sep = videoUrl.includes('?') ? '&' : '?';
-                    fullUrl += `${sep}autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1#t=${Math.floor(offsetSeconds)}`;
+                    // LOCAL MP4/MKV FILE: Play instantly on raw hardware HTML5 player
+                    sendYTCommand(yt1, 'stopVideo'); sendYTCommand(yt2, 'stopVideo');
+                    yt1.src = ''; yt2.src = ''; // Kill YouTube entirely
+                    
+                    html5Player.src = videoUrl;
+                    html5Player.currentTime = offsetSeconds;
+                    html5Player.classList.add('active'); // Show
+                    html5Player.play().catch(()=>{}); // Play instantly
                 }
-                const player = document.getElementById('video-player'); if (player) player.src = fullUrl;
             }
         }
 
