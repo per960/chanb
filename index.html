@@ -678,7 +678,7 @@ NEWS</textarea>
                 advtBox.style.height = getVal('row3_h', 60) + 'px';
                 advtBox.style.fontSize = getVal('advt_box_size', 26) + 'px';
                 advtBox.style.color = getCol('advt_box_color');
-                advtBox.style.background = getBg('bg_advt_box_1', 'bg_advt_box_2', 'bg_advt_transparent');
+                t3.style.background = getBg('bg_advt_box_1', 'bg_advt_box_2', 'bg_advt_transparent');
                 advtBox.innerHTML = `<span>${(getTxt('lbl_advt') || 'ADVT').replace(/\n/g, '<br>')}</span> <div class="edit-icon"><i class="fa-solid fa-pen"></i></div>`;
             }
         }
@@ -745,9 +745,10 @@ NEWS</textarea>
             const aBitrate = document.getElementById('stream-abitrate').value.trim() || "128K";
             const url = document.getElementById('stream-url').value.trim();
             const key = document.getElementById('stream-key').value.trim();
-            const fullDest = key ? `${url}/${key}` : url;
+            
+            if (!url) { alert("Please enter a Publishing Point / Stream URL"); return; }
 
-            if (!fullDest) { alert("Please enter a Publishing Point / Stream URL"); return; }
+            const displayUrl = key ? `${url}/${key}` : url;
 
             const consoleBox = document.getElementById('stream-status-console');
             const stateText = document.getElementById('stream-state-text');
@@ -755,13 +756,13 @@ NEWS</textarea>
             
             consoleBox.classList.add('active');
             stateText.textContent = "eMS_Running";
-            ptText.textContent = `Target: ${fullDest} | V: ${vBitrate} | A: ${aBitrate} (${format})`;
+            ptText.textContent = `Target: ${displayUrl} | V: ${vBitrate} | A: ${aBitrate} (${format})`;
 
             if (window.AndroidBridge && window.AndroidBridge.startStreamingFull) {
-                window.AndroidBridge.startStreamingFull(format, fullDest, key, vBitrate, aBitrate);
+                // FIX: Pass the raw url and key independently so Kotlin handles appending
+                window.AndroidBridge.startStreamingFull(format, url, key, vBitrate, aBitrate);
             } else if (window.AndroidBridge && window.AndroidBridge.startStreaming) {
-                // Fallback for older APK installations
-                window.AndroidBridge.startStreaming(format, fullDest, key);
+                window.AndroidBridge.startStreaming(format, displayUrl);
             } else {
                 alert("Streaming execution relies on the Android TV Box background service.");
             }
