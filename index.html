@@ -22,7 +22,6 @@
         .login-input { background: #111; border: 1px solid #333; border-radius: 6px; color: #fff; width: 100%; padding: 15px; margin-bottom: 20px; font-size: 16px; text-align: center; letter-spacing: 2px; box-sizing: border-box; outline: none; text-transform: uppercase; }
         .login-btn { background: #28a745; color: #fff; border: none; border-radius: 6px; width: 100%; padding: 15px; font-size: 16px; font-weight: 600; cursor: pointer; }
         
-        /* Updated header styles to center and enlarge */
         h1 { font-weight: 900; font-size: 26px; margin-top: 0; margin-bottom: 15px; flex-shrink: 0; display: flex; justify-content: center; align-items: center; letter-spacing: 1px; } 
         h1 span { color: var(--accent-red); }
         .header-title-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
@@ -114,7 +113,6 @@
     <div id="dashboard" class="container" style="display:none;">
         <h1>
             <div class="header-title-text">MY TV <span>PLAYOUT</span></div>
-            <!-- Code block is now hidden using display: none -->
             <div style="display:none; font-size:11px; color:#aaa; border:1px solid #333; padding:4px 10px; border-radius:20px; font-weight:normal;">Code: <span id="display-code" style="color:#fff; font-weight:bold;"></span></div>
         </h1>
 
@@ -188,31 +186,15 @@
                     <option value="HLS">HLS Segmented Output</option>
                 </select>
 
+                <!-- Removed Codec selectors based on request -->
                 <div class="input-row">
-                    <div>
-                        <label>Video Codec</label>
-                        <select id="stream-vcodec">
-                            <option value="libx264">H.264 / AVC (Standard)</option>
-                            <option value="copy">Stream Copy (No Transcode)</option>
-                        </select>
-                    </div>
                     <div>
                         <label>Video Bitrate</label>
-                        <input type="text" id="stream-vbitrate" value="1.5M">
-                    </div>
-                </div>
-
-                <div class="input-row">
-                    <div>
-                        <label>Audio Codec</label>
-                        <select id="stream-acodec">
-                            <option value="aac">AAC (Advanced Audio Coding)</option>
-                            <option value="copy">Audio Copy</option>
-                        </select>
+                        <input type="text" id="stream-vbitrate" placeholder="e.g. 1.5M, 800K" value="1.5M">
                     </div>
                     <div>
                         <label>Audio Bitrate</label>
-                        <input type="text" id="stream-abitrate" value="128K">
+                        <input type="text" id="stream-abitrate" placeholder="e.g. 128K, 64K" value="128K">
                     </div>
                 </div>
 
@@ -760,6 +742,8 @@ NEWS</textarea>
         // Stream Control Functions connecting to Android Native
         window.startNativeStream = function() {
             const format = document.getElementById('stream-format').value;
+            const vBitrate = document.getElementById('stream-vbitrate').value.trim() || "1.5M";
+            const aBitrate = document.getElementById('stream-abitrate').value.trim() || "128K";
             const url = document.getElementById('stream-url').value.trim();
             const key = document.getElementById('stream-key').value.trim();
             const fullDest = key ? `${url}/${key}` : url;
@@ -772,10 +756,13 @@ NEWS</textarea>
             
             consoleBox.classList.add('active');
             stateText.textContent = "eMS_Running";
-            ptText.textContent = `Publishing Point: ${fullDest} (${format})`;
+            ptText.textContent = `Target: ${fullDest} | V: ${vBitrate} | A: ${aBitrate} (${format})`;
 
-            if (window.AndroidBridge && window.AndroidBridge.startStreaming) {
-                window.AndroidBridge.startStreaming(format, fullDest);
+            if (window.AndroidBridge && window.AndroidBridge.startStreamingFull) {
+                window.AndroidBridge.startStreamingFull(format, fullDest, key, vBitrate, aBitrate);
+            } else if (window.AndroidBridge && window.AndroidBridge.startStreaming) {
+                // Fallback for older APK installations
+                window.AndroidBridge.startStreaming(format, fullDest, key);
             } else {
                 alert("Streaming execution relies on the Android TV Box background service.");
             }
