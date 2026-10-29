@@ -32,7 +32,8 @@
         .tab-btn { padding: 12px 16px; background-color: transparent; border: none; color: var(--text-muted); cursor: pointer; font-weight: 800; font-size: 15px; border-radius: 8px 8px 0 0; white-space: nowrap; transition: 0.2s;}
         .tab-btn.active { background-color: var(--accent-red); color: #ffffff; }
         
-        .admin-card { background-color: var(--bg-card); border-radius: 12px; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); display: flex; flex-direction: column; }
+        /* Added max-height and overflow-y to ensure the card can scroll on TV screens */
+        .admin-card { background-color: var(--bg-card); border-radius: 12px; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); display: flex; flex-direction: column; max-height: calc(100vh - 120px); overflow-y: auto; }
         
         .form-group { display: none; flex-direction: column; }
         .form-group.active { display: flex; }
@@ -99,6 +100,13 @@
     </style>
 </head>
 <body>
+
+    <!-- OVERLAY FOR AUTO START COUNTDOWN -->
+    <div id="auto-start-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:10000; flex-direction:column; justify-content:center; align-items:center;">
+        <h2 style="color:#28a745; margin-bottom: 20px; font-size: 24px;">Starting Playout Screen...</h2>
+        <div style="font-size:80px; font-weight:900; margin-bottom:40px; color:#fff;" id="auto-start-timer">5</div>
+        <button onclick="cancelAutoStart()" style="padding:15px 40px; font-size:18px; font-weight:bold; background:#ff453a; color:#fff; border:none; border-radius:8px; cursor:pointer;">Cancel Auto-Start</button>
+    </div>
 
     <div id="login-screen" class="login-wrapper">
         <div class="login-box">
@@ -175,47 +183,55 @@
                 <textarea id="new-promo-url" placeholder="Paste Image link here..." rows="2"></textarea>
             </div>
 
-            <div id="form-stream" class="form-group">
-                <h3 style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #333;"><i class="fa-solid fa-tower-broadcast" style="color:var(--accent-red);"></i> Streaming Settings</h3>
+            <!-- COMPRESSED STREAM SETTINGS FORM -->
+            <div id="form-stream" class="form-group" style="padding-bottom: 20px;">
+                <h3 style="margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #333; font-size:14px;"><i class="fa-solid fa-tower-broadcast" style="color:var(--accent-red);"></i> Streaming Settings</h3>
                 
-                <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 20px;">
-                    <span>Enable Dual Output (Screen + Network)</span>
-                    <input type="checkbox" id="chk-dual-output" onchange="saveStreamSettings()">
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 10px; flex: 1;">
+                        <span style="font-size: 11px;">Auto Start Playout on Boot</span>
+                        <input type="checkbox" id="chk-auto-start" onchange="saveStreamSettings()">
+                    </div>
+                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 10px; flex: 1;">
+                        <span style="font-size: 11px;">Dual Output (Screen + Net)</span>
+                        <input type="checkbox" id="chk-dual-output" onchange="saveStreamSettings()">
+                    </div>
                 </div>
 
-                <label>Format</label>
-                <select id="stream-format" onchange="saveStreamSettings()">
+                <label style="margin-bottom:2px;">Format</label>
+                <select id="stream-format" onchange="saveStreamSettings()" style="padding:8px; margin-bottom:8px;">
                     <option value="RTMP">RTMP Streaming (YouTube, Facebook, Twitch, Ustream)</option>
                     <option value="UDP">UDP Multicast Streaming (Local Network)</option>
                     <option value="RTSP">RTSP Streaming Output</option>
                     <option value="HLS">HLS Segmented Output</option>
                 </select>
 
-                <div class="input-row">
+                <div class="input-row" style="margin-bottom:0;">
                     <div>
-                        <label>Video Bitrate</label>
-                        <input type="text" id="stream-vbitrate" placeholder="e.g. 1.5M, 800K" value="1.5M" oninput="saveStreamSettings()">
+                        <label style="margin-bottom:2px;">Video Bitrate</label>
+                        <input type="text" id="stream-vbitrate" placeholder="e.g. 1.5M, 800K" value="1.5M" oninput="saveStreamSettings()" style="padding:8px; margin-bottom:8px;">
                     </div>
                     <div>
-                        <label>Audio Bitrate</label>
-                        <input type="text" id="stream-abitrate" placeholder="e.g. 128K, 64K" value="128K" oninput="saveStreamSettings()">
+                        <label style="margin-bottom:2px;">Audio Bitrate</label>
+                        <input type="text" id="stream-abitrate" placeholder="e.g. 128K, 64K" value="128K" oninput="saveStreamSettings()" style="padding:8px; margin-bottom:8px;">
                     </div>
                 </div>
 
-                <label>Publishing Point (URL)</label>
-                <input type="text" id="stream-url" placeholder="rtmp://a.rtmp.youtube.com/live2 or udp://239.1.1.1:1234" oninput="saveStreamSettings()">
+                <label style="margin-bottom:2px;">Publishing Point (URL)</label>
+                <input type="text" id="stream-url" placeholder="rtmp://a.rtmp.youtube.com/live2 or udp://..." oninput="saveStreamSettings()" style="padding:8px; margin-bottom:8px;">
 
-                <label>Stream Key (If Applicable)</label>
-                <input type="text" id="stream-key" placeholder="Your stream key..." oninput="saveStreamSettings()">
+                <label style="margin-bottom:2px;">Stream Key (If Applicable)</label>
+                <input type="text" id="stream-key" placeholder="Your stream key..." oninput="saveStreamSettings()" style="padding:8px; margin-bottom:8px;">
 
-                <div style="display:flex; gap:10px; margin-top:10px;">
-                    <button class="action-btn" style="background:#28a745; flex:1;" onclick="startNativeStream(false)"><i class="fa-solid fa-play"></i> START STREAM</button>
-                    <button class="action-btn" style="background:#ff453a; flex:1;" onclick="stopNativeStream()"><i class="fa-solid fa-stop"></i> STOP STREAM</button>
+                <div style="display:flex; gap:8px; margin-top:5px;">
+                    <button class="action-btn" style="background:#0a84ff; flex:1; padding:10px; font-size:12px;" onclick="launchScreen()"><i class="fa-solid fa-tv"></i> LAUNCH SCREEN</button>
+                    <button class="action-btn" style="background:#28a745; flex:1; padding:10px; font-size:12px;" onclick="startNativeStream(false)"><i class="fa-solid fa-play"></i> START STREAM</button>
+                    <button class="action-btn" style="background:#ff453a; flex:1; padding:10px; font-size:12px;" onclick="stopNativeStream()"><i class="fa-solid fa-stop"></i> STOP</button>
                 </div>
 
-                <div id="stream-status-console" class="stream-status-box">
+                <div id="stream-status-console" class="stream-status-box" style="padding:10px; margin-top:10px;">
                     State: <span id="stream-state-text">Stopped</span><br>
-                    <span id="publishing-point-text" style="font-weight:normal; font-size:12px;">Publishing Point: None</span>
+                    <span id="publishing-point-text" style="font-weight:normal; font-size:11px;">Publishing Point: None</span>
                 </div>
             </div>
 
@@ -476,13 +492,13 @@ NEWS</textarea>
         let currentTable = 'url_playlist'; 
         let editId = null;
         let localDeviceId = localStorage.getItem('mytv_device_id');
+        let autoStartTimerId = null;
 
         if (!localDeviceId) {
             localDeviceId = 'DEV-' + Math.random().toString(36).substr(2, 10) + Date.now().toString(36);
             localStorage.setItem('mytv_device_id', localDeviceId);
         }
 
-        // --- NEW: Save and Load Stream Settings via HTML5 Local Storage ---
         function saveStreamSettings() {
             localStorage.setItem('mytv_stream_format', document.getElementById('stream-format').value);
             localStorage.setItem('mytv_stream_vbitrate', document.getElementById('stream-vbitrate').value);
@@ -490,6 +506,7 @@ NEWS</textarea>
             localStorage.setItem('mytv_stream_url', document.getElementById('stream-url').value);
             localStorage.setItem('mytv_stream_key', document.getElementById('stream-key').value);
             localStorage.setItem('mytv_stream_dual', document.getElementById('chk-dual-output').checked);
+            localStorage.setItem('mytv_auto_start', document.getElementById('chk-auto-start').checked);
         }
 
         function loadStreamSettings() {
@@ -501,16 +518,29 @@ NEWS</textarea>
             if(localStorage.getItem('mytv_stream_dual') !== null) {
                 document.getElementById('chk-dual-output').checked = (localStorage.getItem('mytv_stream_dual') === 'true');
             }
+            if(localStorage.getItem('mytv_auto_start') !== null) {
+                document.getElementById('chk-auto-start').checked = (localStorage.getItem('mytv_auto_start') === 'true');
+            }
         }
 
-        // Auto Login & Setup execution
         window.onload = function() {
-            loadStreamSettings(); // Instantly apply saved stream settings to UI
+            loadStreamSettings(); 
             const savedCode = localStorage.getItem('mytv_saved_operator_code');
             if(savedCode) {
                 document.getElementById('op-code-input').value = savedCode;
                 loginOperator();
             }
+        };
+
+        function cancelAutoStart() {
+            clearInterval(autoStartTimerId);
+            document.getElementById('auto-start-overlay').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'flex';
+        }
+
+        window.launchScreen = function() {
+            if(!activeOperator) return;
+            window.location.href = 'channel.html?code=' + activeOperator;
         };
 
         function getBg(id1, id2, chkId) {
@@ -687,17 +717,6 @@ NEWS</textarea>
             }
         };
 
-        window.onLocalFileSelected = function(fileUri, fileName) {
-            const inputUrl = document.getElementById('input-url');
-            if (inputUrl) {
-                inputUrl.value = fileUri;
-                inputUrl.dispatchEvent(new Event('input')); 
-                const inputName = document.getElementById('input-name');
-                if (inputName && !inputName.value) inputName.value = fileName || "Local Video";
-            }
-        };
-
-        // --- UPDATED: Native stream triggering with silent auto-start mode ---
         window.startNativeStream = function(isAutoStart = false) {
             const format = document.getElementById('stream-format').value;
             const vBitrate = document.getElementById('stream-vbitrate').value.trim() || "1.5M";
@@ -907,17 +926,41 @@ NEWS</textarea>
             
             loadDiv.style.display = 'none';
             document.getElementById('login-screen').style.display = 'none'; 
-            document.getElementById('dashboard').style.display = 'flex'; 
             document.getElementById('display-code').textContent = code;
             
             await loadData();
 
-            // --- NEW: AUTO START STREAM ENGINE ON LOGIN SUCCESS ---
-            if (document.getElementById('chk-dual-output').checked) {
-                // Wait a few seconds to let HTML video tags fully buffer before capturing
-                setTimeout(() => {
-                    startNativeStream(true); 
-                }, 3000);
+            // --- AUTO START COUNTDOWN & EXECUTION LOGIC ---
+            const isAutoStart = document.getElementById('chk-auto-start').checked;
+            
+            if (isAutoStart) {
+                // Keep Dashboard hidden, show overlay
+                const overlay = document.getElementById('auto-start-overlay');
+                const timerText = document.getElementById('auto-start-timer');
+                overlay.style.display = 'flex';
+                
+                let countdown = 5;
+                timerText.innerText = countdown;
+                
+                autoStartTimerId = setInterval(() => {
+                    countdown--;
+                    timerText.innerText = countdown;
+                    
+                    if (countdown <= 0) {
+                        clearInterval(autoStartTimerId);
+                        
+                        const doDual = document.getElementById('chk-dual-output').checked;
+                        if (doDual) {
+                            startNativeStream(true);
+                            setTimeout(() => { launchScreen(); }, 2000); // Wait for background service to initialize before navigating
+                        } else {
+                            launchScreen(); // Navigate to channel playout immediately
+                        }
+                    }
+                }, 1000);
+            } else {
+                // Manual mode, just show Dashboard
+                document.getElementById('dashboard').style.display = 'flex'; 
             }
         }
 
@@ -943,13 +986,9 @@ NEWS</textarea>
 
             if(type === 'controls') { 
                 document.querySelector('.preview-fixed-header').appendChild(saveWrapper);
-                adminCard.classList.add('full-height');
                 setTimeout(resizePreview, 60); 
-            } else if (type === 'stream') {
-                adminCard.classList.remove('full-height');
             } else { 
                 document.getElementById(targetForm).appendChild(saveWrapper);
-                adminCard.classList.remove('full-height');
                 if(type === 'text') {
                     const catContainer = document.getElementById('cat-input-container');
                     if(catContainer) catContainer.style.display = (tbl === 'apts_text') ? 'block' : 'none';
