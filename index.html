@@ -32,7 +32,6 @@
         .tab-btn { padding: 12px 16px; background-color: transparent; border: none; color: var(--text-muted); cursor: pointer; font-weight: 800; font-size: 15px; border-radius: 8px 8px 0 0; white-space: nowrap; transition: 0.2s;}
         .tab-btn.active { background-color: var(--accent-red); color: #ffffff; }
         
-        /* Added max-height and overflow-y to ensure the card can scroll on TV screens */
         .admin-card { background-color: var(--bg-card); border-radius: 12px; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); display: flex; flex-direction: column; max-height: calc(100vh - 120px); overflow-y: auto; }
         
         .form-group { display: none; flex-direction: column; }
@@ -100,13 +99,6 @@
     </style>
 </head>
 <body>
-
-    <!-- OVERLAY FOR AUTO START COUNTDOWN -->
-    <div id="auto-start-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:10000; flex-direction:column; justify-content:center; align-items:center;">
-        <h2 style="color:#28a745; margin-bottom: 20px; font-size: 24px;">Starting Playout Screen...</h2>
-        <div style="font-size:80px; font-weight:900; margin-bottom:40px; color:#fff;" id="auto-start-timer">5</div>
-        <button onclick="cancelAutoStart()" style="padding:15px 40px; font-size:18px; font-weight:bold; background:#ff453a; color:#fff; border:none; border-radius:8px; cursor:pointer;">Cancel Auto-Start</button>
-    </div>
 
     <div id="login-screen" class="login-wrapper">
         <div class="login-box">
@@ -492,7 +484,6 @@ NEWS</textarea>
         let currentTable = 'url_playlist'; 
         let editId = null;
         let localDeviceId = localStorage.getItem('mytv_device_id');
-        let autoStartTimerId = null;
 
         if (!localDeviceId) {
             localDeviceId = 'DEV-' + Math.random().toString(36).substr(2, 10) + Date.now().toString(36);
@@ -531,12 +522,6 @@ NEWS</textarea>
                 loginOperator();
             }
         };
-
-        function cancelAutoStart() {
-            clearInterval(autoStartTimerId);
-            document.getElementById('auto-start-overlay').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'flex';
-        }
 
         window.launchScreen = function() {
             if(!activeOperator) return;
@@ -930,36 +915,28 @@ NEWS</textarea>
             
             await loadData();
 
-            // --- AUTO START COUNTDOWN & EXECUTION LOGIC ---
+            // --- REFINED AUTO START LOGIC ---
             const isAutoStart = document.getElementById('chk-auto-start').checked;
+            const doDual = document.getElementById('chk-dual-output').checked;
             
-            if (isAutoStart) {
-                // Keep Dashboard hidden, show overlay
-                const overlay = document.getElementById('auto-start-overlay');
-                const timerText = document.getElementById('auto-start-timer');
-                overlay.style.display = 'flex';
+            // Check session flag to prevent looping when clicking Back button
+            const hasAutoStarted = sessionStorage.getItem('mytv_has_auto_started');
+
+            if (isAutoStart && !hasAutoStarted) {
+                // Secretly tag the session so we don't auto-start again if they hit back
+                sessionStorage.setItem('mytv_has_auto_started', 'true');
                 
-                let countdown = 5;
-                timerText.innerText = countdown;
-                
-                autoStartTimerId = setInterval(() => {
-                    countdown--;
-                    timerText.innerText = countdown;
-                    
-                    if (countdown <= 0) {
-                        clearInterval(autoStartTimerId);
-                        
-                        const doDual = document.getElementById('chk-dual-output').checked;
-                        if (doDual) {
-                            startNativeStream(true);
-                            setTimeout(() => { launchScreen(); }, 2000); // Wait for background service to initialize before navigating
-                        } else {
-                            launchScreen(); // Navigate to channel playout immediately
-                        }
-                    }
-                }, 1000);
+                if (doDual) {
+                    // Start network upload first
+                    startNativeStream(true);
+                    // Wait a moment for service to initialize, then launch local TV screen
+                    setTimeout(() => { launchScreen(); }, 1500); 
+                } else {
+                    // Launch local TV screen instantly
+                    launchScreen();
+                }
             } else {
-                // Manual mode, just show Dashboard
+                // Show dashboard normally for manual adjustments
                 document.getElementById('dashboard').style.display = 'flex'; 
             }
         }
