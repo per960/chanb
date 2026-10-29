@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Local TV - Playout Screen</title>
+    <title>MY TV - Playout</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Added HLS.js for .m3u8 stream support in the HTML5 player -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
     <style>
@@ -18,7 +17,6 @@
         .player-wrapper { position: relative; width: 100%; height: 100%; max-width: calc(100vh * (16 / 9)); max-height: calc(100vw * (9 / 16)); background-color: #000; overflow: hidden; aspect-ratio: 16 / 9; }
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; pointer-events: none; }
         
-        /* Added CSS for the HTML5 Video Player */
         #html5-player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; object-fit: fill; display: none; background: #000; pointer-events: none; }
 
         #overlay-scaler { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: top left; pointer-events: none; z-index: 10; }
@@ -26,37 +24,44 @@
         @keyframes fadeInOut { 0%, 5% { opacity: 0; } 15%, 85% { opacity: 1; } 95%, 100% { opacity: 0; } }
         #logo1 { position: absolute; top: 190px; left: 40px; width: 250px; height: 160px; z-index: 10; display: none; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5)); }
         #logo { position: absolute; top: 190px; right: 40px; width: 250px; height: 180px; z-index: 10; display: none; }
+        
         .news-broadcaster-container { position: absolute; bottom: 0; left: 0; width: 1920px; height: 1080px; z-index: 20; }
         .news-row { position: absolute; left: 0; width: 100%; display: flex; background-color: transparent; }
-        #row-advt { bottom: 0; height: 60px; } #row-apts { bottom: 60px; height: 80px; } #row-breaking { bottom: 140px; height: 110px; } 
+        
+        /* SHIFTED DOWN BY 60px TO FILL THE GAP LEFT BY ADVT ROW */
+        #row-apts { bottom: 0px; height: 80px; } 
+        #row-breaking { bottom: 80px; height: 110px; } 
+        
         .row-left { display: flex; flex-direction: column; width: 280px; flex-shrink: 0; box-shadow: 3px 0 15px rgba(0,0,0,0.6); z-index: 22; background-color: transparent; overflow: hidden; }
         .row-right { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; width: 100%; overflow: hidden; background-color: transparent; }
         #ticker1-container { display: flex; flex-direction: row; width: 100%; height: 110px; background-color: transparent; }
         .ticker-slider { flex-grow: 1; display: flex; align-items: center; padding: 0 30px; color: #ffffff; white-space: nowrap; overflow: hidden; justify-content: center; text-align: center; }
-        #clock-container { position: absolute; bottom: 140px; right: 0; background-color: transparent; color: #ffffff; display: flex; justify-content: center; align-items: center; padding: 0 20px; white-space: nowrap; overflow: hidden; width: 260px; height: 110px; z-index: 25; }
+        
+        /* SHIFTED DOWN BY 60px */
+        #clock-container { position: absolute; bottom: 80px; right: 0; background-color: transparent; color: #ffffff; display: flex; justify-content: center; align-items: center; padding: 0 20px; white-space: nowrap; overflow: hidden; width: 260px; height: 110px; z-index: 25; }
         #display { font-size: 38px; font-weight: 900; letter-spacing: 1px; transition: opacity 0.5s ease-in-out; }
-        .breaking-box { position: absolute; bottom: 140px; left: 0; text-align: center; height: 110px; width: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: transparent; color: #ffffff; font-weight: 900; font-size: 32px; letter-spacing: 1px; white-space: pre-wrap; line-height: 1.1; z-index: 25; overflow: hidden; }
+        
+        /* SHIFTED DOWN BY 60px */
+        .breaking-box { position: absolute; bottom: 80px; left: 0; text-align: center; height: 110px; width: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: transparent; color: #ffffff; font-weight: 900; font-size: 32px; letter-spacing: 1px; white-space: pre-wrap; line-height: 1.1; z-index: 25; overflow: hidden; }
+        
+        /* REMOVED HEAVY CPU SCALING ANIMATION, ONLY OPACITY REMAINS */
         .breaking-intro { display: none; width: 100%; text-align: center; font-size: 44px; font-weight: 900; color: #ffffff; letter-spacing: 2px; animation: introFlash 1s infinite alternate; }
         .slider-text { display: none; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; font-size: 40px; font-weight: 900; }
-        @keyframes introFlash { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 1; transform: scale(1.02); } }
+        @keyframes introFlash { 0% { opacity: 1; } 100% { opacity: 0.7; } }
         @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
         #apts-box { background-color: transparent; color: #000000; font-size: 32px; font-weight: 900; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 80px; white-space: pre-wrap; line-height: 1.1; overflow:hidden;}
         #ticker2-container { background-color: transparent; height: 80px; position: relative; width: 100%; overflow: hidden; display: flex; align-items: center; }
         .custom-scroll-text { position: absolute; white-space: nowrap; will-change: transform; font-weight: 900; }
         @keyframes slideInLeft { 0% { transform: translateX(-100%); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
         .animate-left-to-right { animation: slideInLeft 0.5s ease-out forwards; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; }
-        #advt-box { background-color: transparent; color: #ffffff; font-size: 26px; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60px; text-align: center; white-space: pre-wrap; line-height: 1.1;}
-        #ticker3-container { background-color: transparent; height: 60px; display: flex; align-items: center; width: 100%; }
-        .marquee-sub { color: #000000; font-size: 36px; font-weight: 900; }
     </style>
 </head>
 <body>
     <main>
         <section class="player-wrapper">
-            <!-- Added HTML5 Video Tag for Local & HLS Media -->
             <video id="html5-player" crossorigin="anonymous" autoplay playsinline></video>
             
-            <!-- Existing YouTube Iframe -->
             <iframe id="video-player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
             
             <div id="overlay-scaler">
@@ -94,11 +99,7 @@
                         <div class="row-left"><div id="apts-box">NEWS</div></div>
                         <div class="row-right"><div id="ticker2-container"></div></div>
                     </div>
-
-                    <div class="news-row" id="row-advt">
-                        <div class="row-left"><div id="advt-box">ADVT</div></div>
-                        <div class="row-right"><div id="ticker3-container"><marquee class="marquee-sub" scrollamount="5" loop="true"></marquee></div></div>
-                    </div>
+                    <!-- ADVT ROW REMOVED -->
                 </div>
             </div>
         </section>
@@ -110,15 +111,12 @@
         const db = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         let OPERATOR_CODE = "";
-        let data = { urlPlaylist: [], aptsText: [], advtText: [], sliderText: [], sliderPlaylist: [], settings: null };
+        let data = { urlPlaylist: [], aptsText: [], sliderText: [], sliderPlaylist: [], settings: null }; // Removed advtText
         let currentVideoIndex = -1; let syncIndex = 0; let syncInterval = null; let imageSlideIndex = 0; let imageSliderInterval = null;
         let breakTimeout1, breakTimeout2; 
         let aptsCurrentIndex = 0; let aptsTickerTimeout = null;
-
-        // Added HLS Instance tracking
         let hlsInstance = null;
 
-        // Called by Android MainActivity when launching playout
         window.startPlayout = function(opCode) {
             OPERATOR_CODE = (opCode || "").trim().toUpperCase();
             if (!OPERATOR_CODE) return;
@@ -307,42 +305,21 @@
                 if(s.apts_box_size) aptsBox.style.fontSize = s.apts_box_size + 'px';
                 if(s.apts_box_color) aptsBox.style.color = s.apts_box_color;
             }
-
-            const rowAdvt = document.getElementById('row-advt'); const advtMarquee = document.querySelector('.marquee-sub');
-            const ticker3Container = document.getElementById('ticker3-container'); const advtBox = document.getElementById('advt-box');
-            const r3Left = rowAdvt ? rowAdvt.querySelector('.row-left') : null;
-            if(rowAdvt) {
-                rowAdvt.style.display = s.show_advt ? 'flex' : 'none';
-                rowAdvt.style.transform = `translate(${s.ticker3_x || 0}px, ${s.ticker3_y || 0}px)`;
-                if(s.row3_w) rowAdvt.style.width = s.row3_w + 'px';
-                if(r3Left && s.advt_box_w) r3Left.style.width = s.advt_box_w + 'px';
-                if(s.row3_h) { rowAdvt.style.height = s.row3_h + 'px'; ticker3Container.style.height = s.row3_h + 'px'; advtBox.style.height = s.row3_h + 'px'; }
-                ticker3Container.style.background = (!s.bg_tick3_1 || s.bg_tick3_1 === 'transparent') ? 'transparent' : getBg(s.bg_tick3_1, s.bg_tick3_2);
-                advtBox.style.background = (!s.bg_advt_box_1 || s.bg_advt_box_1 === 'transparent') ? 'transparent' : getBg(s.bg_advt_box_1, s.bg_advt_box_2);
-                if(s.lbl_advt) advtBox.innerHTML = s.lbl_advt; 
-                if(s.advt_box_size) advtBox.style.fontSize = s.advt_box_size + 'px';
-                if(s.advt_box_color) advtBox.style.color = s.advt_box_color;
-                if(advtMarquee) {
-                    if(s.scroll_sub) advtMarquee.setAttribute('scrollamount', s.scroll_sub);
-                    if(s.ticker3_color) advtMarquee.style.color = s.ticker3_color;
-                    if(s.ticker3_size) advtMarquee.style.fontSize = s.ticker3_size + 'px';
-                }
-            }
             resizeOverlay();
         }
 
         async function loadPlaylist() {
             try {
-                const [urlsRes, aptsRes, advtRes, sliderRes, imgSliderRes, settingsRes] = await Promise.all([
+                // Removed advtText fetch
+                const [urlsRes, aptsRes, sliderRes, imgSliderRes, settingsRes] = await Promise.all([
                     db.from('url_playlist').select('*').eq('operator_code', OPERATOR_CODE).order('id', { ascending: true }),
                     db.from('apts_text').select('*').eq('operator_code', OPERATOR_CODE).order('id', { ascending: true }), 
-                    db.from('advt_text').select('*').eq('operator_code', OPERATOR_CODE).order('id', { ascending: true }),
                     db.from('slider_text').select('*').eq('operator_code', OPERATOR_CODE).order('id', { ascending: true }),
                     db.from('slider_playlist').select('*').eq('operator_code', OPERATOR_CODE).order('id', { ascending: true }),
                     db.from('overlay_settings').select('*').eq('operator_code', OPERATOR_CODE).maybeSingle()
                 ]);
 
-                data.urlPlaylist = urlsRes.data || []; data.aptsText = aptsRes.data || []; data.advtText = advtRes.data || [];
+                data.urlPlaylist = urlsRes.data || []; data.aptsText = aptsRes.data || []; 
                 data.sliderText = sliderRes.data || []; data.sliderPlaylist = imgSliderRes.data || []; data.settings = settingsRes.data || null;
                 
                 updateMarquees(); startImageSlider(); startSynchronizedSliders(); applyOverlaySettings(); scheduleVideo(); 
@@ -382,11 +359,7 @@
         }
 
         function updateMarquees() {
-            const subMarquee = document.querySelector('.marquee-sub');
-            if (subMarquee && data.advtText.length > 0) { 
-                let s = ''; data.advtText.forEach(item => { s += item.text + "&nbsp;&nbsp;&nbsp;&nbsp; &bull; &nbsp;&nbsp;&nbsp;&nbsp;"; }); 
-                subMarquee.innerHTML = s; 
-            }
+            // Removed advt marquee update
             startAptsTicker();
         }
 
@@ -444,9 +417,9 @@
 
                     let fullUrl = videoUrl;
                     if (playlistId && !videoId) {
-                        fullUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=https://loc-sepia.vercel.app&start=${Math.floor(offsetSeconds)}`;
+                        fullUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=${window.location.origin}&start=${Math.floor(offsetSeconds)}`;
                     } else if (videoId) {
-                        fullUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=https://loc-sepia.vercel.app&start=${Math.floor(offsetSeconds)}`;
+                        fullUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=${window.location.origin}&start=${Math.floor(offsetSeconds)}`;
                         if(playlistId) fullUrl += `&list=${playlistId}`;
                     }
                     ytPlayer.src = fullUrl;
