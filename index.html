@@ -32,7 +32,7 @@
         .tab-btn { padding: 12px 16px; background-color: transparent; border: none; color: var(--text-muted); cursor: pointer; font-weight: 800; font-size: 15px; border-radius: 8px 8px 0 0; white-space: nowrap; transition: 0.2s;}
         .tab-btn.active { background-color: var(--accent-red); color: #ffffff; }
         
-        .admin-card { background-color: var(--bg-card); border-radius: 12px; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); display: flex; flex-direction: column; }
+        .admin-card { background-color: var(--bg-card); border-radius: 12px; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); display: flex; flex-direction: column; max-height: calc(100vh - 120px); overflow-y: auto; }
         
         .form-group { display: none; flex-direction: column; }
         .form-group.active { display: flex; }
@@ -92,7 +92,7 @@
         input[type="color"] { width: 100%; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: #111; padding: 2px; margin-bottom: 8px; }
         .dual-color { display: flex; gap: 5px; }
 
-        .stream-status-box { background: #990000; color: #fff; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-top: 15px; display: none; }
+        .stream-status-box { background: #990000; color: #fff; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold; margin-top: 10px; display: none; }
         .stream-status-box.active { display: block; background: #1db954; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -105,7 +105,7 @@
             <div class="login-title">Operator Login</div>
             <div class="login-subtitle">Enter Code.</div>
             <input type="text" id="op-code-input" class="login-input" placeholder="XXXXXXXX">
-            <button onclick="loginOperator()" class="login-btn">Login</button>
+            <button type="button" onclick="loginOperator()" class="login-btn">Login</button>
             <div id="login-loading" class="loading-text">Verifying Device...</div>
             <div id="login-error" style="color:#ff4444; margin-top:15px; font-size:14px; display:none;"></div>
         </div>
@@ -120,12 +120,12 @@
         <div id="status-badge" class="status-badge"></div>
 
         <div class="tabs-container">
-            <button class="tab-btn active" onclick="switchTab('url_playlist', this, 'video')"><i class="fa-solid fa-play"></i> Video Schedule</button>
-            <button class="tab-btn" onclick="switchTab('apts_text', this, 'text')"><i class="fa-solid fa-bolt"></i> News</button>
-            <button class="tab-btn" onclick="switchTab('slider_text', this, 'text')"><i class="fa-solid fa-message"></i> Breaking Alert</button>
-            <button class="tab-btn" onclick="switchTab('slider_playlist', this, 'promo')"><i class="fa-solid fa-images"></i> Top Promo</button>
-            <button class="tab-btn" onclick="switchTab('overlay_settings', this, 'controls')"><i class="fa-solid fa-gamepad"></i> Layout Editor</button>
-            <button class="tab-btn" onclick="switchTab('stream_settings', this, 'stream')"><i class="fa-solid fa-tower-broadcast"></i> Stream Settings</button>
+            <button type="button" class="tab-btn active" onclick="switchTab('url_playlist', this, 'video')"><i class="fa-solid fa-play"></i> Video Schedule</button>
+            <button type="button" class="tab-btn" onclick="switchTab('apts_text', this, 'text')"><i class="fa-solid fa-bolt"></i> News</button>
+            <button type="button" class="tab-btn" onclick="switchTab('slider_text', this, 'text')"><i class="fa-solid fa-message"></i> Breaking Alert</button>
+            <button type="button" class="tab-btn" onclick="switchTab('slider_playlist', this, 'promo')"><i class="fa-solid fa-images"></i> Top Promo</button>
+            <button type="button" class="tab-btn" onclick="switchTab('overlay_settings', this, 'controls')"><i class="fa-solid fa-gamepad"></i> Layout Editor</button>
+            <button type="button" class="tab-btn" onclick="switchTab('stream_settings', this, 'stream')"><i class="fa-solid fa-tower-broadcast"></i> Stream Settings</button>
         </div>
 
         <div class="admin-card">
@@ -135,12 +135,12 @@
                     <iframe id="test-player" width="100%" height="250" src="" frameborder="0" allowfullscreen></iframe>
                     <video id="test-video-player" width="100%" height="250" controls style="display:none; background:#000; object-fit: contain;"></video>
                 </div>
-                <button class="action-btn test-btn" onclick="testCurrentURL()"><i class="fa-solid fa-magnifying-glass"></i> Test Player</button>
+                <button type="button" class="action-btn test-btn" onclick="testCurrentURL()"><i class="fa-solid fa-magnifying-glass"></i> Test Player</button>
                 
                 <label>Source URL (YouTube or MP4)</label>
                 <textarea id="input-url" placeholder="Paste link here..." rows="2"></textarea>
 
-                <button class="action-btn browse-btn" type="button" onclick="browseLocalFile()"><i class="fa-solid fa-folder-open"></i> Browse Local File (USB / Storage)</button>
+                <button type="button" class="action-btn browse-btn" onclick="browseLocalFile()"><i class="fa-solid fa-folder-open"></i> Browse Local File (USB / Storage)</button>
                 
                 <div class="checkbox-group" style="display:none;"><input type="checkbox" id="auto-start-checkbox" checked><span>Auto-chain end time to next start time</span></div>
                 
@@ -156,8 +156,8 @@
                 </div>
 
                 <div id="master-save-wrapper">
-                    <button id="add-btn" class="action-btn" style="margin-bottom:0;"><i class="fa-solid fa-save"></i> Save Changes</button>
-                    <button id="cancel-edit-btn" class="action-btn" style="background:#2c2c2e; display:none; margin-top:10px;">Cancel Edit</button>
+                    <button type="button" id="add-btn" class="action-btn" style="margin-bottom:0;"><i class="fa-solid fa-save"></i> Save Changes</button>
+                    <button type="button" id="cancel-edit-btn" class="action-btn" style="background:#2c2c2e; display:none; margin-top:10px;">Cancel Edit</button>
                 </div>
             </div>
 
@@ -175,47 +175,53 @@
                 <textarea id="new-promo-url" placeholder="Paste Image link here..." rows="2"></textarea>
             </div>
 
-            <div id="form-stream" class="form-group">
-                <h3 style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #333;"><i class="fa-solid fa-tower-broadcast" style="color:var(--accent-red);"></i> Streaming Settings</h3>
+            <div id="form-stream" class="form-group" style="padding-bottom: 10px;">
+                <h3 style="margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid #333; font-size:13px;"><i class="fa-solid fa-tower-broadcast" style="color:var(--accent-red);"></i> Streaming Settings</h3>
                 
-                <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 20px;">
-                    <span>Enable Dual Output (Screen + Network)</span>
-                    <input type="checkbox" id="chk-dual-output" onchange="saveStreamSettings()">
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 10px; flex: 1;">
+                        <span style="font-size: 11px;">Auto Start Playout on Boot</span>
+                        <input type="checkbox" id="chk-auto-start" onchange="saveStreamSettings()">
+                    </div>
+                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 10px; flex: 1;">
+                        <span style="font-size: 11px;">Enable Dual Output (Network)</span>
+                        <input type="checkbox" id="chk-dual-output" onchange="saveStreamSettings()">
+                    </div>
                 </div>
 
-                <label>Format</label>
-                <select id="stream-format" onchange="saveStreamSettings()">
+                <label style="margin-bottom:2px;">Format</label>
+                <select id="stream-format" onchange="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
                     <option value="RTMP">RTMP Streaming (YouTube, Facebook, Twitch, Ustream)</option>
                     <option value="UDP">UDP Multicast Streaming (Local Network)</option>
                     <option value="RTSP">RTSP Streaming Output</option>
                     <option value="HLS">HLS Segmented Output</option>
                 </select>
 
-                <div class="input-row">
+                <div class="input-row" style="margin-bottom:0;">
                     <div>
-                        <label>Video Bitrate</label>
-                        <input type="text" id="stream-vbitrate" placeholder="e.g. 1.5M, 800K" value="1.5M" oninput="saveStreamSettings()">
+                        <label style="margin-bottom:2px;">Video Bitrate</label>
+                        <input type="text" id="stream-vbitrate" placeholder="e.g. 1.5M, 800K" value="1.5M" oninput="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
                     </div>
                     <div>
-                        <label>Audio Bitrate</label>
-                        <input type="text" id="stream-abitrate" placeholder="e.g. 128K, 64K" value="128K" oninput="saveStreamSettings()">
+                        <label style="margin-bottom:2px;">Audio Bitrate</label>
+                        <input type="text" id="stream-abitrate" placeholder="e.g. 128K, 64K" value="128K" oninput="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
                     </div>
                 </div>
 
-                <label>Publishing Point (URL)</label>
-                <input type="text" id="stream-url" placeholder="rtmp://a.rtmp.youtube.com/live2 or udp://239.1.1.1:1234" oninput="saveStreamSettings()">
+                <label style="margin-bottom:2px;">Publishing Point (URL)</label>
+                <input type="text" id="stream-url" placeholder="rtmp://..." oninput="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
 
-                <label>Stream Key (If Applicable)</label>
-                <input type="text" id="stream-key" placeholder="Your stream key..." oninput="saveStreamSettings()">
+                <label style="margin-bottom:2px;">Stream Key (If Applicable)</label>
+                <input type="text" id="stream-key" placeholder="Your stream key..." oninput="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
 
-                <div style="display:flex; gap:10px; margin-top:10px;">
-                    <button class="action-btn" style="background:#28a745; flex:1;" onclick="startNativeStream(false)"><i class="fa-solid fa-play"></i> START STREAM</button>
-                    <button class="action-btn" style="background:#ff453a; flex:1;" onclick="stopNativeStream()"><i class="fa-solid fa-stop"></i> STOP STREAM</button>
+                <div style="display:flex; gap:8px; margin-top:5px;">
+                    <button type="button" class="action-btn" style="background:#28a745; flex:1; padding:8px; font-size:13px;" onclick="startNativeStream(false)"><i class="fa-solid fa-play"></i> START STREAM</button>
+                    <button type="button" class="action-btn" style="background:#ff453a; flex:1; padding:8px; font-size:13px;" onclick="stopNativeStream()"><i class="fa-solid fa-stop"></i> STOP</button>
                 </div>
 
                 <div id="stream-status-console" class="stream-status-box">
                     State: <span id="stream-state-text">Stopped</span><br>
-                    <span id="publishing-point-text" style="font-weight:normal; font-size:12px;">Publishing Point: None</span>
+                    <span id="publishing-point-text" style="font-weight:normal; font-size:11px;">Publishing Point: None</span>
                 </div>
             </div>
 
@@ -482,7 +488,6 @@ NEWS</textarea>
             localStorage.setItem('mytv_device_id', localDeviceId);
         }
 
-        // --- NEW: Save and Load Stream Settings via HTML5 Local Storage ---
         function saveStreamSettings() {
             localStorage.setItem('mytv_stream_format', document.getElementById('stream-format').value);
             localStorage.setItem('mytv_stream_vbitrate', document.getElementById('stream-vbitrate').value);
@@ -490,6 +495,7 @@ NEWS</textarea>
             localStorage.setItem('mytv_stream_url', document.getElementById('stream-url').value);
             localStorage.setItem('mytv_stream_key', document.getElementById('stream-key').value);
             localStorage.setItem('mytv_stream_dual', document.getElementById('chk-dual-output').checked);
+            localStorage.setItem('mytv_stream_single', document.getElementById('chk-single-output').checked);
         }
 
         function loadStreamSettings() {
@@ -498,14 +504,26 @@ NEWS</textarea>
             if(localStorage.getItem('mytv_stream_abitrate')) document.getElementById('stream-abitrate').value = localStorage.getItem('mytv_stream_abitrate');
             if(localStorage.getItem('mytv_stream_url')) document.getElementById('stream-url').value = localStorage.getItem('mytv_stream_url');
             if(localStorage.getItem('mytv_stream_key')) document.getElementById('stream-key').value = localStorage.getItem('mytv_stream_key');
+            
+            if(localStorage.getItem('mytv_stream_single') !== null) {
+                document.getElementById('chk-single-output').checked = (localStorage.getItem('mytv_stream_single') === 'true');
+            }
             if(localStorage.getItem('mytv_stream_dual') !== null) {
                 document.getElementById('chk-dual-output').checked = (localStorage.getItem('mytv_stream_dual') === 'true');
             }
         }
 
-        // Auto Login & Setup execution
+        window.toggleAutoStart = function(type) {
+            if (type === 'single' && document.getElementById('chk-single-output').checked) {
+                document.getElementById('chk-dual-output').checked = false;
+            } else if (type === 'dual' && document.getElementById('chk-dual-output').checked) {
+                document.getElementById('chk-single-output').checked = false;
+            }
+            saveStreamSettings();
+        };
+
         window.onload = function() {
-            loadStreamSettings(); // Instantly apply saved stream settings to UI
+            loadStreamSettings(); 
             const savedCode = localStorage.getItem('mytv_saved_operator_code');
             if(savedCode) {
                 document.getElementById('op-code-input').value = savedCode;
@@ -697,35 +715,35 @@ NEWS</textarea>
             }
         };
 
-        // --- UPDATED: Native stream triggering with silent auto-start mode ---
         window.startNativeStream = function(isAutoStart = false) {
             const format = document.getElementById('stream-format').value;
             const vBitrate = document.getElementById('stream-vbitrate').value.trim() || "1.5M";
             const aBitrate = document.getElementById('stream-abitrate').value.trim() || "128K";
             const url = document.getElementById('stream-url').value.trim();
             const key = document.getElementById('stream-key').value.trim();
-            
-            if (!url) { 
-                if(!isAutoStart) alert("Please enter a Publishing Point / Stream URL"); 
-                return; 
+            const isDual = document.getElementById('chk-dual-output').checked;
+
+            if (isDual && url) {
+                const displayUrl = key ? `${url}/${key}` : url;
+                const consoleBox = document.getElementById('stream-status-console');
+                const stateText = document.getElementById('stream-state-text');
+                const ptText = document.getElementById('publishing-point-text');
+                
+                consoleBox.classList.add('active');
+                stateText.textContent = "eMS_Running";
+                ptText.textContent = `Target: ${displayUrl} | V: ${vBitrate} | A: ${aBitrate} (${format})`;
+
+                if (window.AndroidBridge && window.AndroidBridge.startStreamingFull) {
+                    window.AndroidBridge.startStreamingFull(format, url, key, vBitrate, aBitrate);
+                } else if (window.AndroidBridge && window.AndroidBridge.startStreaming) {
+                    window.AndroidBridge.startStreaming(format, displayUrl);
+                }
             }
-
-            const displayUrl = key ? `${url}/${key}` : url;
-
-            const consoleBox = document.getElementById('stream-status-console');
-            const stateText = document.getElementById('stream-state-text');
-            const ptText = document.getElementById('publishing-point-text');
             
-            consoleBox.classList.add('active');
-            stateText.textContent = "eMS_Running";
-            ptText.textContent = `Target: ${displayUrl} | V: ${vBitrate} | A: ${aBitrate} (${format})`;
-
-            if (window.AndroidBridge && window.AndroidBridge.startStreamingFull) {
-                window.AndroidBridge.startStreamingFull(format, url, key, vBitrate, aBitrate);
-            } else if (window.AndroidBridge && window.AndroidBridge.startStreaming) {
-                window.AndroidBridge.startStreaming(format, displayUrl);
+            if (window.AndroidBridge && window.AndroidBridge.launchPlayout) {
+                window.AndroidBridge.launchPlayout();
             } else {
-                if(!isAutoStart) alert("Streaming execution relies on the Android TV Box background service.");
+                window.location.href = 'https://chanb-three.vercel.app/channel.html?code=' + activeOperator + '&op=' + activeOperator;
             }
         };
 
@@ -912,12 +930,16 @@ NEWS</textarea>
             
             await loadData();
 
-            // --- NEW: AUTO START STREAM ENGINE ON LOGIN SUCCESS ---
-            if (document.getElementById('chk-dual-output').checked) {
-                // Wait a few seconds to let HTML video tags fully buffer before capturing
+            // --- AUTO START ENGINE ---
+            const isSingle = document.getElementById('chk-single-output').checked;
+            const isDual = document.getElementById('chk-dual-output').checked;
+            const hasAutoStarted = sessionStorage.getItem('mytv_has_auto_started');
+
+            if (!hasAutoStarted && (isSingle || isDual)) {
+                sessionStorage.setItem('mytv_has_auto_started', 'true');
                 setTimeout(() => {
                     startNativeStream(true); 
-                }, 3000);
+                }, 1500);
             }
         }
 
@@ -941,18 +963,19 @@ NEWS</textarea>
             
             document.getElementById(targetForm).classList.add('active'); 
 
-            if(type === 'controls') { 
-                document.querySelector('.preview-fixed-header').appendChild(saveWrapper);
-                adminCard.classList.add('full-height');
-                setTimeout(resizePreview, 60); 
-            } else if (type === 'stream') {
-                adminCard.classList.remove('full-height');
-            } else { 
-                document.getElementById(targetForm).appendChild(saveWrapper);
-                adminCard.classList.remove('full-height');
-                if(type === 'text') {
-                    const catContainer = document.getElementById('cat-input-container');
-                    if(catContainer) catContainer.style.display = (tbl === 'apts_text') ? 'block' : 'none';
+            if (type === 'stream') {
+                saveWrapper.style.display = 'none';
+            } else {
+                saveWrapper.style.display = 'block';
+                if(type === 'controls') { 
+                    document.querySelector('.preview-fixed-header').appendChild(saveWrapper);
+                    setTimeout(resizePreview, 60); 
+                } else { 
+                    document.getElementById(targetForm).appendChild(saveWrapper);
+                    if(type === 'text') {
+                        const catContainer = document.getElementById('cat-input-container');
+                        if(catContainer) catContainer.style.display = (tbl === 'apts_text') ? 'block' : 'none';
+                    }
                 }
             }
             
@@ -1009,8 +1032,8 @@ NEWS</textarea>
             div.innerHTML = `
                 <div style="margin-bottom: 15px; font-size: 14px; line-height: 1.5; word-break: break-all;">${previewHtml}</div>
                 <div style="display: flex; gap: 10px;">
-                    <button class="btn-sm edit-btn" style="flex:1; padding:10px; font-size: 13px; margin:0;" onclick="${editAction}"><i class="fa-solid fa-pen"></i> Edit</button>
-                    <button class="btn-sm delete-btn" style="flex:1; padding:10px; font-size: 13px; margin:0;" onclick="deleteEntry(${id})"><i class="fa-solid fa-trash"></i> Delete</button>
+                    <button type="button" class="btn-sm edit-btn" style="flex:1; padding:10px; font-size: 13px; margin:0;" onclick="${editAction}"><i class="fa-solid fa-pen"></i> Edit</button>
+                    <button type="button" class="btn-sm delete-btn" style="flex:1; padding:10px; font-size: 13px; margin:0;" onclick="deleteEntry(${id})"><i class="fa-solid fa-trash"></i> Delete</button>
                 </div>
             `; 
             return div;
@@ -1160,7 +1183,7 @@ NEWS</textarea>
                     const safeUrl = btoa(encodeURIComponent(item.url || ''));
                     const safeName = btoa(encodeURIComponent(item.name || ''));
                     const displayName = item.name ? item.name : 'View';
-                    html += `<tr><td>${item.start}</td><td>${item.duration}</td><td><a class="name-text" href="${item.url}" target="_blank">${displayName}</a></td><td><button class="btn-sm edit-btn" onclick="editVideo(${item.id}, '${safeUrl}', '${item.start}', '${item.duration}', '${item.end}', '${safeName}')"><i class="fa-solid fa-pen"></i></button><button class="btn-sm delete-btn" onclick="deleteEntry(${item.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`; 
+                    html += `<tr><td>${item.start}</td><td>${item.duration}</td><td><a class="name-text" href="${item.url}" target="_blank">${displayName}</a></td><td><button type="button" class="btn-sm edit-btn" onclick="editVideo(${item.id}, '${safeUrl}', '${item.start}', '${item.duration}', '${item.end}', '${safeName}')"><i class="fa-solid fa-pen"></i></button><button type="button" class="btn-sm delete-btn" onclick="deleteEntry(${item.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`; 
                 });
                 dataList.innerHTML = html + '</tbody></table>';
                 highlightCurrentVideo();
