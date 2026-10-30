@@ -342,7 +342,7 @@
                 data.sliderText = sliderRes.data || []; data.sliderPlaylist = imgSliderRes.data || []; data.settings = settingsRes.data || null;
                 
                 updateMarquees(); startImageSlider(); startSynchronizedSliders(); applyOverlaySettings(); 
-                scheduleVideo(); // Fire scheduler immediately upon load
+                scheduleVideo(); 
             } catch (err) {}
         }
 
@@ -475,12 +475,10 @@
                 // MODE B: SEQUENTIAL LOOP (Fallback when no time matches)
                 if (!isSequentialMode) {
                     isSequentialMode = true;
-                    // Just entered sequential mode. Pick up where we left off, or start at index 0.
                     if (currentVideoIndex === -1) currentVideoIndex = 0;
                     sequentialIndex = currentVideoIndex;
                     playVideoAtIndex(sequentialIndex, 0);
                 }
-                // Once in sequential mode, the 'ended' and 'onStateChange' listeners naturally advance the video.
             }
         }
 
@@ -504,7 +502,6 @@
             if (document.getElementById('display')) document.getElementById('display').textContent = "00:00 AM";
             updateDisplay(); setInterval(updateDisplay, 8000); 
             
-            // Wait for YouTube API to become available before loading playlist
             const checkYtInterval = setInterval(async () => {
                 if (typeof YT !== 'undefined' && YT.Player) {
                     clearInterval(checkYtInterval);
