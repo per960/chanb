@@ -525,10 +525,14 @@ NEWS</textarea>
 
         window.launchScreen = function() {
             if(!activeOperator) {
-                alert("Operator code missing. Please login again.");
-                return;
+                const saved = localStorage.getItem('mytv_saved_operator_code');
+                if (saved) activeOperator = saved;
+                else {
+                    alert("Operator code missing. Please login again.");
+                    return;
+                }
             }
-            window.location.assign('channel.html?code=' + activeOperator + '&op=' + activeOperator);
+            window.location.href = 'https://chanb-three.vercel.app/channel.html?code=' + activeOperator + '&op=' + activeOperator;
         };
 
         function getBg(id1, id2, chkId) {
@@ -713,13 +717,7 @@ NEWS</textarea>
             const key = document.getElementById('stream-key').value.trim();
             const isDual = document.getElementById('chk-dual-output').checked;
 
-            if (isDual) {
-                if (!url) { 
-                    if(!isAutoStart) console.log("Missing URL. Skipping network stream, opening screen only."); 
-                    launchScreen(); // Fall back to single screen if URL is completely empty
-                    return; 
-                }
-
+            if (isDual && url) {
                 const displayUrl = key ? `${url}/${key}` : url;
                 const consoleBox = document.getElementById('stream-status-console');
                 const stateText = document.getElementById('stream-state-text');
@@ -734,13 +732,10 @@ NEWS</textarea>
                 } else if (window.AndroidBridge && window.AndroidBridge.startStreaming) {
                     window.AndroidBridge.startStreaming(format, displayUrl);
                 }
-                
-                // Launch the Screen Playout automatically after starting network broadcast
-                setTimeout(() => { launchScreen(); }, 1500);
-            } else {
-                // If dual is unchecked, instantly launch the screen
-                launchScreen();
             }
+            
+            // Launch the Screen Playout (Single Output) using the absolute path
+            launchScreen();
         };
 
         window.stopNativeStream = function() {
@@ -921,21 +916,20 @@ NEWS</textarea>
             
             loadDiv.style.display = 'none';
             document.getElementById('login-screen').style.display = 'none'; 
+            document.getElementById('dashboard').style.display = 'flex'; 
             document.getElementById('display-code').textContent = code;
             
             await loadData();
 
-            // --- REFINED AUTO START LOGIC ---
+            // --- AUTO START ENGINE ---
             const isAutoStart = document.getElementById('chk-auto-start').checked;
             const hasAutoStarted = sessionStorage.getItem('mytv_has_auto_started');
 
             if (isAutoStart && !hasAutoStarted) {
-                sessionStorage.setItem('mytv_has_auto_started', 'true'); // Prevent infinite loop on back button
+                sessionStorage.setItem('mytv_has_auto_started', 'true');
                 setTimeout(() => {
                     startNativeStream(true); 
                 }, 1500);
-            } else {
-                document.getElementById('dashboard').style.display = 'flex'; 
             }
         }
 
@@ -959,7 +953,6 @@ NEWS</textarea>
             
             document.getElementById(targetForm).classList.add('active'); 
 
-            // Hide the save changes wrapper completely if in the Stream Settings tab
             if (type === 'stream') {
                 saveWrapper.style.display = 'none';
             } else {
