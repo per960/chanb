@@ -178,14 +178,14 @@
             <div id="form-stream" class="form-group" style="padding-bottom: 10px;">
                 <h3 style="margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid #333; font-size:13px;"><i class="fa-solid fa-tower-broadcast" style="color:var(--accent-red);"></i> Streaming Settings</h3>
                 
-                <div style="display:flex; gap:10px; margin-bottom:15px;">
-                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 10px; flex: 1;">
-                        <span style="font-size: 11px;">Auto Start Playout on Boot</span>
-                        <input type="checkbox" id="chk-auto-start" onchange="saveStreamSettings()">
+                <div style="display:flex; gap:10px; margin-bottom:8px;">
+                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 8px; flex: 1;">
+                        <span style="font-size: 11px;">Single Output (Screen Only)</span>
+                        <input type="checkbox" id="chk-single-output" onchange="toggleAutoStart('single')">
                     </div>
-                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 10px; flex: 1;">
-                        <span style="font-size: 11px;">Enable Dual Output (Network)</span>
-                        <input type="checkbox" id="chk-dual-output" onchange="saveStreamSettings()">
+                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 8px; flex: 1;">
+                        <span style="font-size: 11px;">Dual Output (Screen+Network)</span>
+                        <input type="checkbox" id="chk-dual-output" onchange="toggleAutoStart('dual')">
                     </div>
                 </div>
 
@@ -496,7 +496,7 @@ NEWS</textarea>
             localStorage.setItem('mytv_stream_url', document.getElementById('stream-url').value);
             localStorage.setItem('mytv_stream_key', document.getElementById('stream-key').value);
             localStorage.setItem('mytv_stream_dual', document.getElementById('chk-dual-output').checked);
-            localStorage.setItem('mytv_auto_start', document.getElementById('chk-auto-start').checked);
+            localStorage.setItem('mytv_stream_single', document.getElementById('chk-single-output').checked);
         }
 
         function loadStreamSettings() {
@@ -506,13 +506,22 @@ NEWS</textarea>
             if(localStorage.getItem('mytv_stream_url')) document.getElementById('stream-url').value = localStorage.getItem('mytv_stream_url');
             if(localStorage.getItem('mytv_stream_key')) document.getElementById('stream-key').value = localStorage.getItem('mytv_stream_key');
             
+            if(localStorage.getItem('mytv_stream_single') !== null) {
+                document.getElementById('chk-single-output').checked = (localStorage.getItem('mytv_stream_single') === 'true');
+            }
             if(localStorage.getItem('mytv_stream_dual') !== null) {
                 document.getElementById('chk-dual-output').checked = (localStorage.getItem('mytv_stream_dual') === 'true');
             }
-            if(localStorage.getItem('mytv_auto_start') !== null) {
-                document.getElementById('chk-auto-start').checked = (localStorage.getItem('mytv_auto_start') === 'true');
-            }
         }
+
+        window.toggleAutoStart = function(type) {
+            if (type === 'single' && document.getElementById('chk-single-output').checked) {
+                document.getElementById('chk-dual-output').checked = false;
+            } else if (type === 'dual' && document.getElementById('chk-dual-output').checked) {
+                document.getElementById('chk-single-output').checked = false;
+            }
+            saveStreamSettings();
+        };
 
         window.onload = function() {
             loadStreamSettings(); 
@@ -523,6 +532,7 @@ NEWS</textarea>
             }
         };
 
+        // --- UPDATED: LAUNCH SCREEN VIA NATIVE KOTLIN BRIDGE ---
         window.launchScreen = function() {
             if(!activeOperator) {
                 const saved = localStorage.getItem('mytv_saved_operator_code');
@@ -532,7 +542,14 @@ NEWS</textarea>
                     return;
                 }
             }
-            window.location.href = 'https://chanb-three.vercel.app/channel.html?code=' + activeOperator + '&op=' + activeOperator;
+            
+            // Tell the native Android app to hide this dashboard and show the overlayWebView
+            if (window.AndroidBridge && window.AndroidBridge.launchPlayout) {
+                window.AndroidBridge.launchPlayout();
+            } else {
+                // Fallback only if someone tries to load this in a standard desktop Chrome browser
+                window.location.href = 'https://chanb-three.vercel.app/channel.html?code=' + activeOperator + '&op=' + activeOperator;
+            }
         };
 
         function getBg(id1, id2, chkId) {
@@ -734,7 +751,7 @@ NEWS</textarea>
                 }
             }
             
-            // Launch the Screen Playout (Single Output) using the absolute path
+            // Re-use the fixed native launch command
             launchScreen();
         };
 
@@ -922,10 +939,11 @@ NEWS</textarea>
             await loadData();
 
             // --- AUTO START ENGINE ---
-            const isAutoStart = document.getElementById('chk-auto-start').checked;
+            const isSingle = document.getElementById('chk-single-output').checked;
+            const isDual = document.getElementById('chk-dual-output').checked;
             const hasAutoStarted = sessionStorage.getItem('mytv_has_auto_started');
 
-            if (isAutoStart && !hasAutoStarted) {
+            if (!hasAutoStarted && (isSingle || isDual)) {
                 sessionStorage.setItem('mytv_has_auto_started', 'true');
                 setTimeout(() => {
                     startNativeStream(true); 
