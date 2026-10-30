@@ -120,8 +120,10 @@
         
         let hlsInstance = null;
         let ytPlayerInstance = null;
+        const html5Player = document.getElementById('html5-player');
+        const ytWrapper = document.getElementById('yt-wrapper');
 
-        // Sequence Triggers (Fired when MP4, MKV, M3U8, or YT finishes)
+        // Sequence Triggers
         function onVideoEnded() {
             if (isSequentialMode && data.urlPlaylist && data.urlPlaylist.length > 0) {
                 sequentialIndex = (sequentialIndex + 1) % data.urlPlaylist.length;
@@ -136,9 +138,8 @@
         }
 
         // Attach listeners for HTML5 Media
-        const html5Player = document.getElementById('html5-player');
         html5Player.addEventListener('ended', onVideoEnded);
-        html5Player.addEventListener('error', onVideoEnded); // Skip broken local files
+        html5Player.addEventListener('error', onVideoEnded);
 
         window.startPlayout = function(opCode) {
             OPERATOR_CODE = (opCode || "").trim().toUpperCase();
@@ -150,8 +151,17 @@
             clearTimeout(syncInterval); clearTimeout(breakTimeout1); clearTimeout(breakTimeout2);
             clearTimeout(aptsTickerTimeout); clearTimeout(imageSliderInterval);
             
-            if (ytPlayerInstance && typeof ytPlayerInstance.stopVideo === 'function') ytPlayerInstance.stopVideo();
-            if (html5Player) { html5Player.pause(); html5Player.removeAttribute('src'); }
+            if (ytPlayerInstance) {
+                try { ytPlayerInstance.destroy(); } catch(e){}
+                ytPlayerInstance = null;
+            }
+            ytWrapper.innerHTML = '<div id="video-player"></div>';
+            
+            if (html5Player) { 
+                html5Player.pause(); 
+                html5Player.removeAttribute('src'); 
+                html5Player.load();
+            }
             if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
         };
 
@@ -398,14 +408,21 @@
                 if (parsed.searchParams.has('list')) { playlistId = parsed.searchParams.get('list'); isYouTube = true; }
             } catch(e){}
 
-            const ytWrapper = document.getElementById('yt-wrapper');
-
+            // -------------------------------------------------------------
+            // STRICT KILL PREVIOUS PLAYER TO PREVENT AUDIO MIXING
+            // -------------------------------------------------------------
             if (isYouTube) {
-                // YOUTUBE PLAYER
-                html5Player.style.display = 'none'; html5Player.pause(); html5Player.removeAttribute('src');
+                // Moving to YouTube -> Forcefully kill HTML5 audio buffer
+                html5Player.style.display = 'none';
+                try {
+                    html5Player.pause();
+                    html5Player.removeAttribute('src'); // Detach source
+                    html5Player.load(); // Dump memory buffer to guarantee silence
+                } catch(e) {}
                 if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-                ytWrapper.style.display = 'block';
 
+                // START YOUTUBE
+                ytWrapper.style.display = 'block';
                 if (typeof YT !== 'undefined' && YT.Player) {
                     if (!ytPlayerInstance) {
                         ytPlayerInstance = new YT.Player('video-player', {
@@ -419,11 +436,17 @@
                     }
                 }
             } else {
-                // HTML5 PLAYER (MP4, MKV, M3U8)
-                ytWrapper.style.display = 'none'; 
-                if (ytPlayerInstance && typeof ytPlayerInstance.stopVideo === 'function') ytPlayerInstance.stopVideo();
-                html5Player.style.display = 'block';
+                // Moving to HTML5 -> Forcefully kill YouTube Iframe
+                ytWrapper.style.display = 'none';
+                if (ytPlayerInstance) {
+                    try { ytPlayerInstance.destroy(); } catch(e) {}
+                    ytPlayerInstance = null;
+                }
+                // Wipe the iframe element entirely from the DOM to silence it immediately
+                ytWrapper.innerHTML = '<div id="video-player"></div>';
 
+                // START HTML5
+                html5Player.style.display = 'block';
                 const isM3u8 = videoUrl.toLowerCase().includes('.m3u8');
                 
                 if (isM3u8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
