@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
 
     <style>
         :root { --primary-bg: #000000; --text-light: #ffffff; --font-main: 'Roboto', sans-serif; }
@@ -15,7 +16,9 @@
         body { background-color: var(--primary-bg); width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; font-family: var(--font-main); overflow: hidden !important; touch-action: none; }
         main { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
         .player-wrapper { position: relative; width: 100%; height: 100%; max-width: calc(100vh * (16 / 9)); max-height: calc(100vw * (9 / 16)); background-color: #000; overflow: hidden; aspect-ratio: 16 / 9; }
-        .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; pointer-events: none; }
+        
+        #yt-wrapper { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; display: none; pointer-events: none; }
+        #yt-wrapper iframe { width: 100%; height: 100%; border: none; }
         
         #html5-player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; object-fit: fill; display: none; background: #000; pointer-events: none; }
 
@@ -28,7 +31,6 @@
         .news-broadcaster-container { position: absolute; bottom: 0; left: 0; width: 1920px; height: 1080px; z-index: 20; }
         .news-row { position: absolute; left: 0; width: 100%; display: flex; background-color: transparent; }
         
-        /* SHIFTED DOWN BY 60px TO FILL THE GAP LEFT BY ADVT ROW */
         #row-apts { bottom: 0px; height: 80px; } 
         #row-breaking { bottom: 80px; height: 110px; } 
         
@@ -37,14 +39,11 @@
         #ticker1-container { display: flex; flex-direction: row; width: 100%; height: 110px; background-color: transparent; }
         .ticker-slider { flex-grow: 1; display: flex; align-items: center; padding: 0 30px; color: #ffffff; white-space: nowrap; overflow: hidden; justify-content: center; text-align: center; }
         
-        /* SHIFTED DOWN BY 60px */
         #clock-container { position: absolute; bottom: 80px; right: 0; background-color: transparent; color: #ffffff; display: flex; justify-content: center; align-items: center; padding: 0 20px; white-space: nowrap; overflow: hidden; width: 260px; height: 110px; z-index: 25; }
         #display { font-size: 38px; font-weight: 900; letter-spacing: 1px; transition: opacity 0.5s ease-in-out; }
         
-        /* SHIFTED DOWN BY 60px */
         .breaking-box { position: absolute; bottom: 80px; left: 0; text-align: center; height: 110px; width: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: transparent; color: #ffffff; font-weight: 900; font-size: 32px; letter-spacing: 1px; white-space: pre-wrap; line-height: 1.1; z-index: 25; overflow: hidden; }
         
-        /* REMOVED HEAVY CPU SCALING ANIMATION, ONLY OPACITY REMAINS */
         .breaking-intro { display: none; width: 100%; text-align: center; font-size: 44px; font-weight: 900; color: #ffffff; letter-spacing: 2px; animation: introFlash 1s infinite alternate; }
         .slider-text { display: none; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; font-size: 40px; font-weight: 900; }
         @keyframes introFlash { 0% { opacity: 1; } 100% { opacity: 0.7; } }
@@ -61,8 +60,7 @@
     <main>
         <section class="player-wrapper">
             <video id="html5-player" crossorigin="anonymous" autoplay playsinline></video>
-            
-            <iframe id="video-player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            <div id="yt-wrapper"><div id="video-player"></div></div>
             
             <div id="overlay-scaler">
                 <div id="top-image-slider">
@@ -99,7 +97,6 @@
                         <div class="row-left"><div id="apts-box">NEWS</div></div>
                         <div class="row-right"><div id="ticker2-container"></div></div>
                     </div>
-                    <!-- ADVT ROW REMOVED -->
                 </div>
             </div>
         </section>
@@ -111,11 +108,37 @@
         const db = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         let OPERATOR_CODE = "";
-        let data = { urlPlaylist: [], aptsText: [], sliderText: [], sliderPlaylist: [], settings: null }; // Removed advtText
-        let currentVideoIndex = -1; let syncIndex = 0; let syncInterval = null; let imageSlideIndex = 0; let imageSliderInterval = null;
+        let data = { urlPlaylist: [], aptsText: [], sliderText: [], sliderPlaylist: [], settings: null };
+        
+        let currentVideoIndex = -1; 
+        let isSequentialMode = false;
+        let sequentialIndex = 0;
+        
+        let syncIndex = 0; let syncInterval = null; let imageSlideIndex = 0; let imageSliderInterval = null;
         let breakTimeout1, breakTimeout2; 
         let aptsCurrentIndex = 0; let aptsTickerTimeout = null;
+        
         let hlsInstance = null;
+        let ytPlayerInstance = null;
+
+        // Sequence Triggers (Fired when MP4, MKV, M3U8, or YT finishes)
+        function onVideoEnded() {
+            if (isSequentialMode && data.urlPlaylist && data.urlPlaylist.length > 0) {
+                sequentialIndex = (sequentialIndex + 1) % data.urlPlaylist.length;
+                playVideoAtIndex(sequentialIndex, 0);
+            }
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.ENDED) {
+                onVideoEnded();
+            }
+        }
+
+        // Attach listeners for HTML5 Media
+        const html5Player = document.getElementById('html5-player');
+        html5Player.addEventListener('ended', onVideoEnded);
+        html5Player.addEventListener('error', onVideoEnded); // Skip broken local files
 
         window.startPlayout = function(opCode) {
             OPERATOR_CODE = (opCode || "").trim().toUpperCase();
@@ -127,11 +150,8 @@
             clearTimeout(syncInterval); clearTimeout(breakTimeout1); clearTimeout(breakTimeout2);
             clearTimeout(aptsTickerTimeout); clearTimeout(imageSliderInterval);
             
-            const player = document.getElementById('video-player');
-            if (player) player.src = '';
-            
-            const hPlayer = document.getElementById('html5-player');
-            if (hPlayer) { hPlayer.pause(); hPlayer.removeAttribute('src'); }
+            if (ytPlayerInstance && typeof ytPlayerInstance.stopVideo === 'function') ytPlayerInstance.stopVideo();
+            if (html5Player) { html5Player.pause(); html5Player.removeAttribute('src'); }
             if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
         };
 
@@ -310,7 +330,6 @@
 
         async function loadPlaylist() {
             try {
-                // Removed advtText fetch
                 const [urlsRes, aptsRes, sliderRes, imgSliderRes, settingsRes] = await Promise.all([
                     db.from('url_playlist').select('*').eq('operator_code', OPERATOR_CODE).order('id', { ascending: true }),
                     db.from('apts_text').select('*').eq('operator_code', OPERATOR_CODE).order('id', { ascending: true }), 
@@ -322,7 +341,8 @@
                 data.urlPlaylist = urlsRes.data || []; data.aptsText = aptsRes.data || []; 
                 data.sliderText = sliderRes.data || []; data.sliderPlaylist = imgSliderRes.data || []; data.settings = settingsRes.data || null;
                 
-                updateMarquees(); startImageSlider(); startSynchronizedSliders(); applyOverlaySettings(); scheduleVideo(); 
+                updateMarquees(); startImageSlider(); startSynchronizedSliders(); applyOverlaySettings(); 
+                scheduleVideo(); // Fire scheduler immediately upon load
             } catch (err) {}
         }
 
@@ -359,90 +379,108 @@
         }
 
         function updateMarquees() {
-            // Removed advt marquee update
             startAptsTicker();
         }
 
         function timeToSec(t) { if (!t) return 0; const [h, m, s] = t.split(':').map(Number); return (h * 3600) + (m * 60) + s; }
 
+        function playVideoAtIndex(index, offsetSeconds) {
+            currentVideoIndex = index;
+            const videoUrl = data.urlPlaylist[index].url;
+            let videoId = null; let playlistId = null;
+            let isYouTube = false;
+
+            try {
+                let ytMatch = videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|live\/|shorts\/|watch\?v=))([^&#?]+)/);
+                if (ytMatch && ytMatch[1]) { videoId = ytMatch[1]; isYouTube = true; }
+                let parsed = new URL(videoUrl);
+                if (parsed.searchParams.has('v')) { videoId = parsed.searchParams.get('v'); isYouTube = true; }
+                if (parsed.searchParams.has('list')) { playlistId = parsed.searchParams.get('list'); isYouTube = true; }
+            } catch(e){}
+
+            const ytWrapper = document.getElementById('yt-wrapper');
+
+            if (isYouTube) {
+                // YOUTUBE PLAYER
+                html5Player.style.display = 'none'; html5Player.pause(); html5Player.removeAttribute('src');
+                if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+                ytWrapper.style.display = 'block';
+
+                if (typeof YT !== 'undefined' && YT.Player) {
+                    if (!ytPlayerInstance) {
+                        ytPlayerInstance = new YT.Player('video-player', {
+                            videoId: videoId || '',
+                            playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1, 'rel': 0, 'playsinline': 1, 'start': Math.floor(offsetSeconds), 'list': playlistId || '' },
+                            events: { 'onStateChange': onPlayerStateChange, 'onError': onVideoEnded }
+                        });
+                    } else {
+                        if (playlistId && !videoId) ytPlayerInstance.loadPlaylist({list: playlistId, index: 0, startSeconds: offsetSeconds});
+                        else ytPlayerInstance.loadVideoById({videoId: videoId, startSeconds: offsetSeconds});
+                    }
+                }
+            } else {
+                // HTML5 PLAYER (MP4, MKV, M3U8)
+                ytWrapper.style.display = 'none'; 
+                if (ytPlayerInstance && typeof ytPlayerInstance.stopVideo === 'function') ytPlayerInstance.stopVideo();
+                html5Player.style.display = 'block';
+
+                const isM3u8 = videoUrl.toLowerCase().includes('.m3u8');
+                
+                if (isM3u8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
+                    if (hlsInstance) hlsInstance.destroy();
+                    hlsInstance = new Hls({ startPosition: offsetSeconds, enableWorker: true });
+                    hlsInstance.loadSource(videoUrl);
+                    hlsInstance.attachMedia(html5Player);
+                    hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() { html5Player.play().catch(()=>{}); });
+                    hlsInstance.on(Hls.Events.ERROR, function(e, d) { if(d.fatal) onVideoEnded(); });
+                } else {
+                    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+                    html5Player.src = videoUrl;
+                    html5Player.currentTime = offsetSeconds;
+                    html5Player.play().catch(()=>{});
+                }
+            }
+        }
+
         function scheduleVideo() {
             if (!data.urlPlaylist || data.urlPlaylist.length === 0) return;
             const currentSec = timeToSec(new Date().toTimeString().slice(0, 8)); 
-            let matchedIndex = -1; let offsetSeconds = 0; 
             
+            let matchedIndex = -1; 
+            let offsetSeconds = 0; 
+            
+            // 1. STRICT TIME MATCH CHECK
             for (let i = 0; i < data.urlPlaylist.length; i++) {
-                const item = data.urlPlaylist[i]; const startSec = timeToSec(item.start); const endSec = timeToSec(item.end);
-                if (startSec <= endSec) {
+                const item = data.urlPlaylist[i]; 
+                const startSec = timeToSec(item.start); 
+                const endSec = timeToSec(item.end);
+                
+                if (startSec === 0 && endSec === 0) continue; // Skip zero-times, these belong to sequential logic
+                
+                if (startSec < endSec) {
                     if (currentSec >= startSec && currentSec < endSec) { matchedIndex = i; offsetSeconds = currentSec - startSec; break; }
-                } else {
+                } else if (startSec > endSec) {
                     if (currentSec >= startSec || currentSec < endSec) { matchedIndex = i; offsetSeconds = currentSec >= startSec ? currentSec - startSec : (currentSec + 86400) - startSec; break; }
                 }
             }
 
-            if (matchedIndex === -1) {
-                let totalDuration = 0;
-                const durations = data.urlPlaylist.map(item => { const d = timeToSec(item.duration) || 0; totalDuration += d; return d; });
-                if (totalDuration > 0) {
-                    const playTime = currentSec % totalDuration; let runningSum = 0;
-                    for (let i = 0; i < data.urlPlaylist.length; i++) {
-                        let vidDur = durations[i];
-                        if (playTime >= runningSum && playTime < runningSum + vidDur) { matchedIndex = i; offsetSeconds = playTime - runningSum; break; }
-                        runningSum += vidDur;
-                    }
+            // 2. APPLY SCHEDULING MODE
+            if (matchedIndex !== -1) {
+                // MODE A: TIME-BASED
+                isSequentialMode = false;
+                if (matchedIndex !== currentVideoIndex) {
+                    playVideoAtIndex(matchedIndex, offsetSeconds);
                 }
-            }
-            
-            if (matchedIndex !== -1 && matchedIndex !== currentVideoIndex) {
-                currentVideoIndex = matchedIndex; 
-                const videoUrl = data.urlPlaylist[matchedIndex].url; 
-                let videoId = null; let playlistId = null;
-                let isYouTube = false;
-
-                try {
-                    let ytMatch = videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|live\/|shorts\/|watch\?v=))([^&#?]+)/);
-                    if (ytMatch && ytMatch[1]) { videoId = ytMatch[1]; isYouTube = true; }
-                    let parsed = new URL(videoUrl);
-                    if (parsed.searchParams.has('v')) { videoId = parsed.searchParams.get('v'); isYouTube = true; }
-                    if (parsed.searchParams.has('list')) { playlistId = parsed.searchParams.get('list'); isYouTube = true; }
-                } catch(e){}
-
-                const html5Player = document.getElementById('html5-player');
-                const ytPlayer = document.getElementById('video-player');
-
-                if (isYouTube) {
-                    // --- YOUTUBE: Use Iframe ---
-                    html5Player.style.display = 'none'; html5Player.pause(); html5Player.removeAttribute('src');
-                    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-                    ytPlayer.style.display = 'block';
-
-                    let fullUrl = videoUrl;
-                    if (playlistId && !videoId) {
-                        fullUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=${window.location.origin}&start=${Math.floor(offsetSeconds)}`;
-                    } else if (videoId) {
-                        fullUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=${window.location.origin}&start=${Math.floor(offsetSeconds)}`;
-                        if(playlistId) fullUrl += `&list=${playlistId}`;
-                    }
-                    ytPlayer.src = fullUrl;
-                } else {
-                    // --- MP4 / MKV / M3U8: Use HTML5 Video Tag ---
-                    ytPlayer.style.display = 'none'; ytPlayer.src = '';
-                    html5Player.style.display = 'block';
-
-                    const isM3u8 = videoUrl.toLowerCase().includes('.m3u8');
-                    
-                    if (isM3u8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
-                        if (hlsInstance) { hlsInstance.destroy(); }
-                        hlsInstance = new Hls({ startPosition: offsetSeconds, enableWorker: true });
-                        hlsInstance.loadSource(videoUrl);
-                        hlsInstance.attachMedia(html5Player);
-                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() { html5Player.play().catch(()=>{}); });
-                    } else {
-                        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-                        html5Player.src = videoUrl;
-                        html5Player.currentTime = offsetSeconds;
-                        html5Player.play().catch(()=>{});
-                    }
+            } else {
+                // MODE B: SEQUENTIAL LOOP (Fallback when no time matches)
+                if (!isSequentialMode) {
+                    isSequentialMode = true;
+                    // Just entered sequential mode. Pick up where we left off, or start at index 0.
+                    if (currentVideoIndex === -1) currentVideoIndex = 0;
+                    sequentialIndex = currentVideoIndex;
+                    playVideoAtIndex(sequentialIndex, 0);
                 }
+                // Once in sequential mode, the 'ended' and 'onStateChange' listeners naturally advance the video.
             }
         }
 
@@ -465,8 +503,17 @@
         async function init() {
             if (document.getElementById('display')) document.getElementById('display').textContent = "00:00 AM";
             updateDisplay(); setInterval(updateDisplay, 8000); 
-            await loadPlaylist(); setInterval(loadPlaylist, 5 * 60 * 1000); setInterval(scheduleVideo, 1000); 
-            resizeOverlay();
+            
+            // Wait for YouTube API to become available before loading playlist
+            const checkYtInterval = setInterval(async () => {
+                if (typeof YT !== 'undefined' && YT.Player) {
+                    clearInterval(checkYtInterval);
+                    await loadPlaylist(); 
+                    setInterval(loadPlaylist, 5 * 60 * 1000); 
+                    setInterval(scheduleVideo, 1000); 
+                    resizeOverlay();
+                }
+            }, 200);
         }
     </script>
 </body>
