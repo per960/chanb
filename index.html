@@ -214,10 +214,9 @@
                 <label style="margin-bottom:2px;">Stream Key (If Applicable)</label>
                 <input type="text" id="stream-key" placeholder="Your stream key..." oninput="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
 
-                <div style="display:flex; gap:8px; margin-top:5px;">
-                    <button type="button" class="action-btn" style="background:#0a84ff; flex:1; padding:8px; font-size:12px;" onclick="launchScreen()"><i class="fa-solid fa-tv"></i> LAUNCH SCREEN</button>
-                    <button type="button" class="action-btn" style="background:#28a745; flex:1; padding:8px; font-size:12px;" onclick="startNativeStream(false)"><i class="fa-solid fa-play"></i> START STREAM</button>
-                    <button type="button" class="action-btn" style="background:#ff453a; flex:1; padding:8px; font-size:12px;" onclick="stopNativeStream()"><i class="fa-solid fa-stop"></i> STOP</button>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button type="button" class="action-btn" style="background:#28a745; flex:1; padding:12px;" onclick="startNativeStream(false)"><i class="fa-solid fa-play"></i> START STREAM</button>
+                    <button type="button" class="action-btn" style="background:#ff453a; flex:1; padding:12px;" onclick="stopNativeStream()"><i class="fa-solid fa-stop"></i> STOP STREAM</button>
                 </div>
 
                 <div id="stream-status-console" class="stream-status-box">
@@ -532,8 +531,7 @@ NEWS</textarea>
             }
         };
 
-        // --- UPDATED: LAUNCH SCREEN VIA NATIVE KOTLIN BRIDGE ---
-        window.launchScreen = function() {
+        function launchScreen() {
             if(!activeOperator) {
                 const saved = localStorage.getItem('mytv_saved_operator_code');
                 if (saved) activeOperator = saved;
@@ -543,14 +541,12 @@ NEWS</textarea>
                 }
             }
             
-            // Tell the native Android app to hide this dashboard and show the overlayWebView
             if (window.AndroidBridge && window.AndroidBridge.launchPlayout) {
                 window.AndroidBridge.launchPlayout();
             } else {
-                // Fallback only if someone tries to load this in a standard desktop Chrome browser
                 window.location.href = 'https://chanb-three.vercel.app/channel.html?code=' + activeOperator + '&op=' + activeOperator;
             }
-        };
+        }
 
         function getBg(id1, id2, chkId) {
             const chk = document.getElementById(chkId);
@@ -751,7 +747,6 @@ NEWS</textarea>
                 }
             }
             
-            // Re-use the fixed native launch command
             launchScreen();
         };
 
@@ -798,39 +793,45 @@ NEWS</textarea>
             }
         });
 
+        // REWRITTEN FOR BETTER USB HANDLING (10 SECOND TIMEOUT + EXPLICIT LOAD)
         function fetchHTML5VideoDuration(url) {
             inputDuration.value = "Fetching...";
             const tempVid = document.createElement('video');
             tempVid.style.display = 'none';
+            tempVid.preload = 'metadata';
+            tempVid.muted = true;
 
             let fallbackTimer = setTimeout(() => {
                 if(inputDuration.value === "Fetching...") {
                     inputDuration.value = "00:00:00";
-                    inputDuration.dispatchEvent(new Event('input'));
+                    inputDuration.dispatchEvent(new Event('input', { bubbles: true }));
                 }
+                tempVid.src = '';
                 tempVid.remove();
-            }, 5000);
+            }, 10000); 
 
             tempVid.addEventListener('loadedmetadata', function() {
                 clearTimeout(fallbackTimer);
                 let d = tempVid.duration;
-                if(!isNaN(d) && d > 0 && inputDuration.value === "Fetching...") {
+                if(!isNaN(d) && d > 0 && d !== Infinity) {
                     inputDuration.value = secToTime(d);
-                    inputDuration.dispatchEvent(new Event('input'));
+                    inputDuration.dispatchEvent(new Event('input', { bubbles: true }));
+                } else {
+                    inputDuration.value = "00:00:00";
+                    inputDuration.dispatchEvent(new Event('input', { bubbles: true }));
                 }
                 tempVid.remove();
             });
             
             tempVid.addEventListener('error', function() {
                 clearTimeout(fallbackTimer);
-                if(inputDuration.value === "Fetching...") {
-                    inputDuration.value = "00:00:00";
-                    inputDuration.dispatchEvent(new Event('input'));
-                }
+                inputDuration.value = "00:00:00";
+                inputDuration.dispatchEvent(new Event('input', { bubbles: true }));
                 tempVid.remove();
             });
 
             tempVid.src = url;
+            tempVid.load(); // Explicitly trigger load for slow USB connections
         }
 
         function fetchYoutubeDuration(videoId) {
@@ -883,6 +884,7 @@ NEWS</textarea>
                 
                 videoPlayer.style.display = 'block';
                 videoPlayer.src = url;
+                videoPlayer.load(); // EXPLICIT LOAD
                 videoPlayer.play().catch(e => console.log('Auto-play blocked or error in test player', e));
             }
         };
