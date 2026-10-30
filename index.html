@@ -178,14 +178,14 @@
             <div id="form-stream" class="form-group" style="padding-bottom: 10px;">
                 <h3 style="margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid #333; font-size:13px;"><i class="fa-solid fa-tower-broadcast" style="color:var(--accent-red);"></i> Streaming Settings</h3>
                 
-                <div style="display:flex; gap:10px; margin-bottom:15px;">
-                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 10px; flex: 1;">
-                        <span style="font-size: 11px;">Auto Start Playout on Boot</span>
-                        <input type="checkbox" id="chk-auto-start" onchange="saveStreamSettings()">
+                <div style="display:flex; gap:10px; margin-bottom:8px;">
+                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 8px; flex: 1;">
+                        <span style="font-size: 11px;">Single Output (Screen Only)</span>
+                        <input type="checkbox" id="chk-single-output" onchange="toggleAutoStart('single')">
                     </div>
-                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 10px; flex: 1;">
-                        <span style="font-size: 11px;">Enable Dual Output (Network)</span>
-                        <input type="checkbox" id="chk-dual-output" onchange="saveStreamSettings()">
+                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 8px; flex: 1;">
+                        <span style="font-size: 11px;">Dual Output (Screen+Network)</span>
+                        <input type="checkbox" id="chk-dual-output" onchange="toggleAutoStart('dual')">
                     </div>
                 </div>
 
@@ -215,8 +215,8 @@
                 <input type="text" id="stream-key" placeholder="Your stream key..." oninput="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
 
                 <div style="display:flex; gap:8px; margin-top:5px;">
-                    <button type="button" class="action-btn" style="background:#28a745; flex:1; padding:8px; font-size:13px;" onclick="startNativeStream(false)"><i class="fa-solid fa-play"></i> START STREAM</button>
-                    <button type="button" class="action-btn" style="background:#ff453a; flex:1; padding:8px; font-size:13px;" onclick="stopNativeStream()"><i class="fa-solid fa-stop"></i> STOP</button>
+                    <button type="button" class="action-btn" style="background:#28a745; flex:1; padding:10px; font-size:13px;" onclick="startNativeStream(false)"><i class="fa-solid fa-play"></i> START STREAM</button>
+                    <button type="button" class="action-btn" style="background:#ff453a; flex:1; padding:10px; font-size:13px;" onclick="stopNativeStream()"><i class="fa-solid fa-stop"></i> STOP</button>
                 </div>
 
                 <div id="stream-status-console" class="stream-status-box">
@@ -421,51 +421,6 @@ NEWS</textarea>
                         <label>Left Box Background (Left/Right Color)</label>
                         <div class="dual-color"><input type="color" id="bg_brk_1" value="#cc0000"><input type="color" id="bg_brk_2" value="#cc0000"></div>
                     </div>
-
-                    <div id="edit-group-row-apts" class="element-edit-group">
-                        <h3><i class="fa-solid fa-pen"></i> Row 2 (News Strip)</h3>
-                        <div class="toggle-badge">
-                            <span>Show Row 2 (News)</span>
-                            <input type="checkbox" id="chk-apts" checked>
-                        </div>
-                        <div class="input-row">
-                            <div><label>Left/Right (X)</label><div class="stepper-control"><button type="button" class="stepper-btn" onclick="adj('pos_ticker2_x', -10)"><i class="fa-solid fa-arrow-left"></i></button><input type="number" id="pos_ticker2_x" class="stepper-input" value="0"><button type="button" class="stepper-btn" onclick="adj('pos_ticker2_x', 10)"><i class="fa-solid fa-arrow-right"></i></button></div></div>
-                            <div><label>Up/Down (Y)</label><div class="stepper-control"><button type="button" class="stepper-btn" onclick="adj('pos_ticker2_y', -10)"><i class="fa-solid fa-arrow-up"></i></button><input type="number" id="pos_ticker2_y" class="stepper-input" value="0"><button type="button" class="stepper-btn" onclick="adj('pos_ticker2_y', 10)"><i class="fa-solid fa-arrow-down"></i></button></div></div>
-                        </div>
-                        <div class="input-row">
-                            <div><label>Total Row Width</label><div class="stepper-control"><button type="button" class="stepper-btn" onclick="adj('row2_w', -10)"><i class="fa-solid fa-minus"></i></button><input type="number" id="row2_w" class="stepper-input" value="1920"><button type="button" class="stepper-btn" onclick="adj('row2_w', 10)"><i class="fa-solid fa-plus"></i></button></div></div>
-                            <div><label>Total Row Height</label><div class="stepper-control"><button type="button" class="stepper-btn" onclick="adj('row2_h', -5)"><i class="fa-solid fa-minus"></i></button><input type="number" id="row2_h" class="stepper-input" value="80"><button type="button" class="stepper-btn" onclick="adj('row2_h', 5)"><i class="fa-solid fa-plus"></i></button></div></div>
-                        </div>
-                        <div class="input-row">
-                            <div><label>Scroll Speed</label><div class="stepper-control"><button type="button" class="stepper-btn" onclick="adj('scroll_main', -1)"><i class="fa-solid fa-minus"></i></button><input type="number" id="scroll_main" class="stepper-input" value="10"><button type="button" class="stepper-btn" onclick="adj('scroll_main', 1)"><i class="fa-solid fa-plus"></i></button></div></div>
-                            <div><label>Text Size</label><div class="stepper-control"><button type="button" class="stepper-btn" onclick="adj('ticker2_size', -2)"><i class="fa-solid fa-minus"></i></button><input type="number" id="ticker2_size" class="stepper-input" value="34"><button type="button" class="stepper-btn" onclick="adj('ticker2_size', 2)"><i class="fa-solid fa-plus"></i></button></div></div>
-                        </div>
-                        <div class="input-row">
-                            <div><label>Text Color</label><input type="color" id="ticker2_color" value="#ffffff"></div>
-                            <div style="flex:1;"></div>
-                        </div>
-                        <div class="checkbox-group" style="margin-bottom: 10px;"><input type="checkbox" id="bg_tick2_transparent" checked> <span>Transparent Marquee</span></div>
-                        <label>Marquee Background (Left/Right Color)</label>
-                        <div class="dual-color"><input type="color" id="bg_tick2_1" value="#1313e8"><input type="color" id="bg_tick2_2" value="#1313e8"></div>
-                    </div>
-
-                    <div id="edit-group-apts-box" class="element-edit-group">
-                        <h3><i class="fa-solid fa-pen"></i> News Box (Left Box)</h3>
-                        <div class="input-row">
-                            <div><label>Box Width</label><div class="stepper-control"><button type="button" class="stepper-btn" onclick="adj('apts_box_w', -5)"><i class="fa-solid fa-minus"></i></button><input type="number" id="apts_box_w" class="stepper-input" value="280"><button type="button" class="stepper-btn" onclick="adj('apts_box_w', 5)"><i class="fa-solid fa-plus"></i></button></div></div>
-                        </div>
-                        <div class="input-row" style="flex-direction: column;">
-                            <label>Default Box Text</label>
-                            <textarea id="lbl_news2" rows="2">NEWS</textarea>
-                        </div>
-                        <div class="input-row">
-                            <div><label>Box Text Size</label><div class="stepper-control"><button type="button" class="stepper-btn" onclick="adj('apts_box_size', -2)"><i class="fa-solid fa-minus"></i></button><input type="number" id="apts_box_size" class="stepper-input" value="32"><button type="button" class="stepper-btn" onclick="adj('apts_box_size', 2)"><i class="fa-solid fa-plus"></i></button></div></div>
-                            <div><label>Box Text Color</label><input type="color" id="apts_box_color" value="#000000"></div>
-                        </div>
-                        <div class="checkbox-group" style="margin-bottom: 10px;"><input type="checkbox" id="bg_apts_transparent" checked> <span>Transparent Left Box</span></div>
-                        <label>Left Box Background (Left/Right Color)</label>
-                        <div class="dual-color"><input type="color" id="bg_apts_1" value="#ffff00"><input type="color" id="bg_apts_2" value="#ffff00"></div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -520,15 +475,6 @@ NEWS</textarea>
                 document.getElementById('chk-single-output').checked = false;
             }
             saveStreamSettings();
-        };
-
-        window.onload = function() {
-            loadStreamSettings(); 
-            const savedCode = localStorage.getItem('mytv_saved_operator_code');
-            if(savedCode) {
-                document.getElementById('op-code-input').value = savedCode;
-                loginOperator();
-            }
         };
 
         function getBg(id1, id2, chkId) {
@@ -1357,6 +1303,17 @@ NEWS</textarea>
         }
         
         cancelEditBtn.onclick = resetForm;
+        
+        // Run explicit initialization sequence immediately (Bypassing restrictive window.onload on Android WebViews)
+        setTimeout(() => {
+            loadStreamSettings(); 
+            const savedCode = localStorage.getItem('mytv_saved_operator_code');
+            if(savedCode) {
+                const opInput = document.getElementById('op-code-input');
+                if (opInput) opInput.value = savedCode;
+                loginOperator();
+            }
+        }, 100);
     </script>
 </body>
 </html>
