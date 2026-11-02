@@ -25,24 +25,26 @@
         #overlay-scaler { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: top left; pointer-events: none; z-index: 10; }
         #top-image-slider { position: absolute; top: 0; left: 0; width: 100%; height: 160px; z-index: 50; background-color: transparent; overflow: hidden; }
         @keyframes fadeInOut { 0%, 5% { opacity: 0; } 15%, 85% { opacity: 1; } 95%, 100% { opacity: 0; } }
-        #logo1 { position: absolute; top: 190px; left: 40px; width: 250px; height: 160px; z-index: 10; display: none; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5)); }
-        #logo { position: absolute; top: 190px; right: 40px; width: 250px; height: 180px; z-index: 10; display: none; }
+        
+        /* EXACT FIXED BASE POSITIONS - 1920x1080 */
+        #logo { position: absolute; top: 190px; left: 1630px; width: 250px; height: 180px; z-index: 10; display: none; }
+        #clock-container { position: absolute; top: 380px; left: 1620px; background-color: transparent; color: #ffffff; display: flex; justify-content: center; align-items: center; padding: 0 20px; white-space: nowrap; overflow: hidden; width: 260px; height: 80px; z-index: 25; }
+        #logo1 { position: absolute; top: 730px; left: 1630px; width: 250px; height: 160px; z-index: 10; display: none; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5)); }
         
         .news-broadcaster-container { position: absolute; bottom: 0; left: 0; width: 1920px; height: 1080px; z-index: 20; }
         .news-row { position: absolute; left: 0; width: 100%; display: flex; background-color: transparent; }
         
-        #row-apts { bottom: 0px; height: 80px; } 
-        #row-breaking { bottom: 80px; height: 110px; } 
+        #row-apts { top: 1000px; height: 80px; } 
+        #row-breaking { top: 890px; height: 110px; } 
         
         .row-left { display: flex; flex-direction: column; width: 280px; flex-shrink: 0; box-shadow: 3px 0 15px rgba(0,0,0,0.6); z-index: 22; background-color: transparent; overflow: hidden; }
         .row-right { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; width: 100%; overflow: hidden; background-color: transparent; }
         #ticker1-container { display: flex; flex-direction: row; width: 100%; height: 110px; background-color: transparent; }
         .ticker-slider { flex-grow: 1; display: flex; align-items: center; padding: 0 30px; color: #ffffff; white-space: nowrap; overflow: hidden; justify-content: center; text-align: center; }
         
-        #clock-container { position: absolute; bottom: 80px; right: 0; background-color: transparent; color: #ffffff; display: flex; justify-content: center; align-items: center; padding: 0 20px; white-space: nowrap; overflow: hidden; width: 260px; height: 110px; z-index: 25; }
         #display { font-size: 38px; font-weight: 900; letter-spacing: 1px; transition: opacity 0.5s ease-in-out; }
         
-        .breaking-box { position: absolute; bottom: 80px; left: 0; text-align: center; height: 110px; width: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: transparent; color: #ffffff; font-weight: 900; font-size: 32px; letter-spacing: 1px; white-space: pre-wrap; line-height: 1.1; z-index: 25; overflow: hidden; }
+        .breaking-box { position: absolute; top: 890px; left: 0; text-align: center; height: 110px; width: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: transparent; color: #ffffff; font-weight: 900; font-size: 32px; letter-spacing: 1px; white-space: pre-wrap; line-height: 1.1; z-index: 25; overflow: hidden; }
         
         .breaking-intro { display: none; width: 100%; text-align: center; font-size: 44px; font-weight: 900; color: #ffffff; letter-spacing: 2px; animation: introFlash 1s infinite alternate; }
         .slider-text { display: none; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; font-size: 40px; font-weight: 900; }
@@ -67,12 +69,12 @@
                     <img id="top-slide-img" style="display:none; width:100%; height:100%; object-fit:fill;" />
                 </div>
                 
-                <div id="logo1">
-                    <img id="logo1-img" style="width:100%; height:100%; object-fit:cover; display:none;" />
-                </div>
-
                 <div id="logo">
                     <img id="logo-img" style="width:100%; height:100%; object-fit:cover; display:none;" />
+                </div>
+
+                <div id="logo1">
+                    <img id="logo1-img" style="width:100%; height:100%; object-fit:cover; display:none;" />
                 </div>
 
                 <div class="news-broadcaster-container">
@@ -123,7 +125,6 @@
         const html5Player = document.getElementById('html5-player');
         const ytWrapper = document.getElementById('yt-wrapper');
 
-        // Sequence Triggers
         function onVideoEnded() {
             if (isSequentialMode && data.urlPlaylist && data.urlPlaylist.length > 0) {
                 sequentialIndex = (sequentialIndex + 1) % data.urlPlaylist.length;
@@ -137,7 +138,6 @@
             }
         }
 
-        // Attach listeners for HTML5 Media
         html5Player.addEventListener('ended', onVideoEnded);
         html5Player.addEventListener('error', onVideoEnded);
 
@@ -408,20 +408,15 @@
                 if (parsed.searchParams.has('list')) { playlistId = parsed.searchParams.get('list'); isYouTube = true; }
             } catch(e){}
 
-            // -------------------------------------------------------------
-            // STRICT KILL PREVIOUS PLAYER TO PREVENT AUDIO MIXING
-            // -------------------------------------------------------------
             if (isYouTube) {
-                // Moving to YouTube -> Forcefully kill HTML5 audio buffer
                 html5Player.style.display = 'none';
                 try {
                     html5Player.pause();
-                    html5Player.removeAttribute('src'); // Detach source
-                    html5Player.load(); // Dump memory buffer to guarantee silence
+                    html5Player.removeAttribute('src'); 
+                    html5Player.load(); 
                 } catch(e) {}
                 if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
 
-                // START YOUTUBE
                 ytWrapper.style.display = 'block';
                 if (typeof YT !== 'undefined' && YT.Player) {
                     if (!ytPlayerInstance) {
@@ -436,16 +431,13 @@
                     }
                 }
             } else {
-                // Moving to HTML5 -> Forcefully kill YouTube Iframe
                 ytWrapper.style.display = 'none';
                 if (ytPlayerInstance) {
                     try { ytPlayerInstance.destroy(); } catch(e) {}
                     ytPlayerInstance = null;
                 }
-                // Wipe the iframe element entirely from the DOM to silence it immediately
                 ytWrapper.innerHTML = '<div id="video-player"></div>';
 
-                // START HTML5
                 html5Player.style.display = 'block';
                 const isM3u8 = videoUrl.toLowerCase().includes('.m3u8');
                 
@@ -472,13 +464,12 @@
             let matchedIndex = -1; 
             let offsetSeconds = 0; 
             
-            // 1. STRICT TIME MATCH CHECK
             for (let i = 0; i < data.urlPlaylist.length; i++) {
                 const item = data.urlPlaylist[i]; 
                 const startSec = timeToSec(item.start); 
                 const endSec = timeToSec(item.end);
                 
-                if (startSec === 0 && endSec === 0) continue; // Skip zero-times, these belong to sequential logic
+                if (startSec === 0 && endSec === 0) continue; 
                 
                 if (startSec < endSec) {
                     if (currentSec >= startSec && currentSec < endSec) { matchedIndex = i; offsetSeconds = currentSec - startSec; break; }
@@ -487,15 +478,12 @@
                 }
             }
 
-            // 2. APPLY SCHEDULING MODE
             if (matchedIndex !== -1) {
-                // MODE A: TIME-BASED
                 isSequentialMode = false;
                 if (matchedIndex !== currentVideoIndex) {
                     playVideoAtIndex(matchedIndex, offsetSeconds);
                 }
             } else {
-                // MODE B: SEQUENTIAL LOOP (Fallback when no time matches)
                 if (!isSequentialMode) {
                     isSequentialMode = true;
                     if (currentVideoIndex === -1) currentVideoIndex = 0;
