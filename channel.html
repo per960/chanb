@@ -108,7 +108,6 @@
         const db = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         let OPERATOR_CODE = "";
-        let isOperatorAllowed = true;
         let data = { urlPlaylist: [], aptsText: [], sliderText: [], sliderPlaylist: [], settings: null };
         
         let currentVideoIndex = -1; 
@@ -118,18 +117,14 @@
         let syncIndex = 0; let syncInterval = null; let imageSlideIndex = 0; let imageSliderInterval = null;
         let breakTimeout1, breakTimeout2; 
         let aptsCurrentIndex = 0; let aptsTickerTimeout = null;
-        let displayTimer = null; let playlistReloadTimer = null; let scheduleTimer = null; let checkYtInterval = null;
-        let operatorStatusTimer = null;
         
         let hlsInstance = null;
         let ytPlayerInstance = null;
         const html5Player = document.getElementById('html5-player');
         const ytWrapper = document.getElementById('yt-wrapper');
-        const playerWrapper = document.querySelector('.player-wrapper');
 
-
+        // Sequence Triggers
         function onVideoEnded() {
-            if (!isOperatorAllowed) return;
             if (isSequentialMode && data.urlPlaylist && data.urlPlaylist.length > 0) {
                 sequentialIndex = (sequentialIndex + 1) % data.urlPlaylist.length;
                 playVideoAtIndex(sequentialIndex, 0);
@@ -142,11 +137,17 @@
             }
         }
 
-
+        // Attach listeners for HTML5 Media
         html5Player.addEventListener('ended', onVideoEnded);
         html5Player.addEventListener('error', onVideoEnded);
 
-        function stopActiveMedia() {
+        window.startPlayout = function(opCode) {
+            OPERATOR_CODE = (opCode || "").trim().toUpperCase();
+            if (!OPERATOR_CODE) return;
+            init();
+        };
+
+        window.stopPlayout = function() {
             clearTimeout(syncInterval); clearTimeout(breakTimeout1); clearTimeout(breakTimeout2);
             clearTimeout(aptsTickerTimeout); clearTimeout(imageSliderInterval);
             
@@ -154,87 +155,14 @@
                 try { ytPlayerInstance.destroy(); } catch(e){}
                 ytPlayerInstance = null;
             }
-            ytWrapper.style.display = 'none';
             ytWrapper.innerHTML = '<div id="video-player"></div>';
             
             if (html5Player) { 
-                html5Player.style.display = 'none';
-                try {
-                    html5Player.pause(); 
-                    html5Player.removeAttribute('src'); 
-                    html5Player.load();
-                } catch(e){}
+                html5Player.pause(); 
+                html5Player.removeAttribute('src'); 
+                html5Player.load();
             }
             if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-            currentVideoIndex = -1;
-            isSequentialMode = false;
-        }
-
-        async function checkOperatorPermission() {
-            if (!OPERATOR_CODE) return false;
-            try {
-                const { data: opData, error } = await db
-                    .from('operators')
-                    .select('max_devices, expires_at')
-                    .eq('code', OPERATOR_CODE)
-                    .maybeSingle();
-
-                if (error || !opData || new Date(opData.expires_at) < new Date()) {
-                    setChannelAllowedState(false);
-                    return false;
-                }
-
-                const maxDevices = (opData.max_devices !== null && opData.max_devices !== undefined) ? opData.max_devices : 1;
-                if (maxDevices <= 0) {
-                    setChannelAllowedState(false);
-                    return false;
-                } else {
-                    setChannelAllowedState(true);
-                    return true;
-                }
-            } catch (err) {
-                return isOperatorAllowed;
-            }
-        }
-
-        function setChannelAllowedState(allowed) {
-            if (!allowed) {
-                if (isOperatorAllowed || playerWrapper.style.display !== 'none') {
-                    isOperatorAllowed = false;
-                    stopActiveMedia();
-                    if (playerWrapper) playerWrapper.style.display = 'none';
-                }
-            } else {
-                const wasBlocked = !isOperatorAllowed || playerWrapper.style.display === 'none';
-                isOperatorAllowed = true;
-                if (playerWrapper) playerWrapper.style.display = 'block';
-                if (wasBlocked) {
-                    resizeOverlay();
-                    updateMarquees();
-                    startImageSlider();
-                    startSynchronizedSliders();
-                    applyOverlaySettings();
-                    scheduleVideo();
-                }
-            }
-        }
-
-        window.startPlayout = function(opCode) {
-            const newCode = (opCode || "").trim().toUpperCase();
-            if (!newCode) return;
-            if (OPERATOR_CODE === newCode && scheduleTimer) return;
-            if (OPERATOR_CODE) window.stopPlayout();
-            OPERATOR_CODE = newCode;
-            currentVideoIndex = -1;
-            isSequentialMode = false;
-            sequentialIndex = 0;
-            init();
-        };
-
-        window.stopPlayout = function() {
-            stopActiveMedia();
-            clearInterval(displayTimer); clearInterval(playlistReloadTimer); clearInterval(scheduleTimer); clearInterval(checkYtInterval); clearInterval(operatorStatusTimer);
-            displayTimer = null; playlistReloadTimer = null; scheduleTimer = null; checkYtInterval = null; operatorStatusTimer = null;
         };
 
         function getBg(c1, c2) { return c1 === c2 ? c1 : `linear-gradient(90deg, ${c1}, ${c2})`; }
@@ -252,12 +180,11 @@
 
         function startSynchronizedSliders() {
             clearTimeout(syncInterval); clearTimeout(breakTimeout1); clearTimeout(breakTimeout2);
-            if (!isOperatorAllowed) return;
             updateSyncedText(); 
         }
 
         function updateSyncedText() {
-            if (!isOperatorAllowed || !data.sliderText || data.sliderText.length === 0) return;
+            if (!data.sliderText || data.sliderText.length === 0) return;
             const currentText = data.sliderText[syncIndex % data.sliderText.length].text;
             syncIndex++;
 
@@ -277,11 +204,9 @@
             } else { chunks.push(remainingStr); }
 
             breakTimeout1 = setTimeout(() => {
-                if (!isOperatorAllowed) return;
                 introEl.style.display = 'none'; textEl.style.display = 'block';
                 let chunkIdx = 0;
                 function showNextChunk() {
-                    if (!isOperatorAllowed) return;
                     textEl.textContent = chunks[chunkIdx];
                     textEl.style.animation = 'none'; textEl.offsetHeight; 
                     textEl.style.animation = 'slideUp 0.5s ease-out forwards';
@@ -294,7 +219,6 @@
         }
 
         function startImageSlider() {
-            if (!isOperatorAllowed) return;
             const sliderContainer = document.getElementById('top-image-slider');
             if (!sliderContainer || !data.sliderPlaylist || data.sliderPlaylist.length === 0) return;
             sliderContainer.style.display = data.settings && !data.settings.show_promo ? 'none' : 'block';
@@ -304,7 +228,7 @@
             const imgEl = document.getElementById('top-slide-img');
 
             const updateSlide = () => {
-                if (!isOperatorAllowed || !data.sliderPlaylist || data.sliderPlaylist.length === 0) return;
+                if (!data.sliderPlaylist || data.sliderPlaylist.length === 0) return;
                 const mediaUrl = data.sliderPlaylist[imageSlideIndex].image;
                 
                 imgEl.src = mediaUrl; 
@@ -323,7 +247,7 @@
         function resizeOverlay() {
             const wrapper = document.querySelector('.player-wrapper');
             const scaler = document.getElementById('overlay-scaler');
-            if(wrapper && scaler && wrapper.clientWidth > 0) {
+            if(wrapper && scaler) {
                 const scale = wrapper.clientWidth / 1920;
                 scaler.style.transform = `scale(${scale})`;
             }
@@ -416,9 +340,6 @@
 
         async function loadPlaylist() {
             try {
-                const allowed = await checkOperatorPermission();
-                if (!allowed) return;
-
                 const [urlsRes, aptsRes, sliderRes, imgSliderRes, settingsRes] = await Promise.all([
                     db.from('url_playlist').select('*').eq('operator_code', OPERATOR_CODE).order('id', { ascending: true }),
                     db.from('apts_text').select('*').eq('operator_code', OPERATOR_CODE).order('id', { ascending: true }), 
@@ -437,7 +358,6 @@
 
         function startAptsTicker() {
             clearTimeout(aptsTickerTimeout);
-            if (!isOperatorAllowed) return;
             const tickerContainer = document.getElementById('ticker2-container');
             const aptsBox = document.getElementById('apts-box');
             if (!data.aptsText || data.aptsText.length === 0) { tickerContainer.innerHTML = ''; return; }
@@ -475,7 +395,6 @@
         function timeToSec(t) { if (!t) return 0; const [h, m, s] = t.split(':').map(Number); return (h * 3600) + (m * 60) + s; }
 
         function playVideoAtIndex(index, offsetSeconds) {
-            if (!isOperatorAllowed) return;
             currentVideoIndex = index;
             const videoUrl = data.urlPlaylist[index].url;
             let videoId = null; let playlistId = null;
@@ -489,18 +408,20 @@
                 if (parsed.searchParams.has('list')) { playlistId = parsed.searchParams.get('list'); isYouTube = true; }
             } catch(e){}
 
-
+            // -------------------------------------------------------------
+            // STRICT KILL PREVIOUS PLAYER TO PREVENT AUDIO MIXING
+            // -------------------------------------------------------------
             if (isYouTube) {
-
+                // Moving to YouTube -> Forcefully kill HTML5 audio buffer
                 html5Player.style.display = 'none';
                 try {
                     html5Player.pause();
-                    html5Player.removeAttribute('src'); 
-                    html5Player.load(); 
+                    html5Player.removeAttribute('src'); // Detach source
+                    html5Player.load(); // Dump memory buffer to guarantee silence
                 } catch(e) {}
                 if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
 
-        
+                // START YOUTUBE
                 ytWrapper.style.display = 'block';
                 if (typeof YT !== 'undefined' && YT.Player) {
                     if (!ytPlayerInstance) {
@@ -515,16 +436,16 @@
                     }
                 }
             } else {
-                
+                // Moving to HTML5 -> Forcefully kill YouTube Iframe
                 ytWrapper.style.display = 'none';
                 if (ytPlayerInstance) {
                     try { ytPlayerInstance.destroy(); } catch(e) {}
                     ytPlayerInstance = null;
                 }
-                
+                // Wipe the iframe element entirely from the DOM to silence it immediately
                 ytWrapper.innerHTML = '<div id="video-player"></div>';
 
-            
+                // START HTML5
                 html5Player.style.display = 'block';
                 const isM3u8 = videoUrl.toLowerCase().includes('.m3u8');
                 
@@ -545,19 +466,19 @@
         }
 
         function scheduleVideo() {
-            if (!isOperatorAllowed || !data.urlPlaylist || data.urlPlaylist.length === 0) return;
+            if (!data.urlPlaylist || data.urlPlaylist.length === 0) return;
             const currentSec = timeToSec(new Date().toTimeString().slice(0, 8)); 
             
             let matchedIndex = -1; 
             let offsetSeconds = 0; 
             
-            
+            // 1. STRICT TIME MATCH CHECK
             for (let i = 0; i < data.urlPlaylist.length; i++) {
                 const item = data.urlPlaylist[i]; 
                 const startSec = timeToSec(item.start); 
                 const endSec = timeToSec(item.end);
                 
-                if (startSec === 0 && endSec === 0) continue; 
+                if (startSec === 0 && endSec === 0) continue; // Skip zero-times, these belong to sequential logic
                 
                 if (startSec < endSec) {
                     if (currentSec >= startSec && currentSec < endSec) { matchedIndex = i; offsetSeconds = currentSec - startSec; break; }
@@ -566,15 +487,15 @@
                 }
             }
 
-            
+            // 2. APPLY SCHEDULING MODE
             if (matchedIndex !== -1) {
-                
+                // MODE A: TIME-BASED
                 isSequentialMode = false;
                 if (matchedIndex !== currentVideoIndex) {
                     playVideoAtIndex(matchedIndex, offsetSeconds);
                 }
             } else {
-                
+                // MODE B: SEQUENTIAL LOOP (Fallback when no time matches)
                 if (!isSequentialMode) {
                     isSequentialMode = true;
                     if (currentVideoIndex === -1) currentVideoIndex = 0;
@@ -602,35 +523,18 @@
 
         async function init() {
             if (document.getElementById('display')) document.getElementById('display').textContent = "00:00 AM";
-            updateDisplay(); 
-            displayTimer = setInterval(updateDisplay, 8000); 
-            operatorStatusTimer = setInterval(checkOperatorPermission, 10000);
+            updateDisplay(); setInterval(updateDisplay, 8000); 
             
-            checkYtInterval = setInterval(async () => {
+            const checkYtInterval = setInterval(async () => {
                 if (typeof YT !== 'undefined' && YT.Player) {
                     clearInterval(checkYtInterval);
-                    checkYtInterval = null;
                     await loadPlaylist(); 
-                    playlistReloadTimer = setInterval(loadPlaylist, 5 * 60 * 1000); 
-                    scheduleTimer = setInterval(scheduleVideo, 1000); 
+                    setInterval(loadPlaylist, 5 * 60 * 1000); 
+                    setInterval(scheduleVideo, 1000); 
                     resizeOverlay();
                 }
             }, 200);
         }
-
-        function checkUrlCode() {
-            const params = new URLSearchParams(window.location.search);
-            const urlCode = params.get('code') || params.get('op');
-            if (urlCode) {
-                window.startPlayout(urlCode);
-            } else {
-                setChannelAllowedState(false);
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', checkUrlCode);
-        window.addEventListener('popstate', checkUrlCode);
-        window.addEventListener('hashchange', checkUrlCode);
     </script>
 </body>
 </html>
