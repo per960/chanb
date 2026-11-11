@@ -92,6 +92,9 @@
         input[type="color"] { width: 100%; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: #111; padding: 2px; margin-bottom: 8px; }
         .dual-color { display: flex; gap: 5px; }
 
+        .stream-status-box { background: #990000; color: #fff; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold; margin-top: 10px; display: none; }
+        .stream-status-box.active { display: block; background: #1db954; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
@@ -122,6 +125,7 @@
             <button type="button" class="tab-btn" onclick="switchTab('slider_text', this, 'text')"><i class="fa-solid fa-message"></i> Breaking Alert</button>
             <button type="button" class="tab-btn" onclick="switchTab('slider_playlist', this, 'promo')"><i class="fa-solid fa-images"></i> Top Promo</button>
             <button type="button" class="tab-btn" onclick="switchTab('overlay_settings', this, 'controls')"><i class="fa-solid fa-gamepad"></i> Layout Editor</button>
+            <button type="button" class="tab-btn" onclick="switchTab('stream_settings', this, 'stream')"><i class="fa-solid fa-tower-broadcast"></i> Stream Settings</button>
         </div>
 
         <div class="admin-card">
@@ -169,6 +173,56 @@
             <div id="form-promo" class="form-group">
                 <label>Promo Image URL</label>
                 <textarea id="new-promo-url" placeholder="Paste Image link here..." rows="2"></textarea>
+            </div>
+
+            <div id="form-stream" class="form-group" style="padding-bottom: 10px;">
+                <h3 style="margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid #333; font-size:13px;"><i class="fa-solid fa-tower-broadcast" style="color:var(--accent-red);"></i> Streaming Settings</h3>
+                
+                <div style="display:flex; gap:10px; margin-bottom:8px;">
+                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 8px; flex: 1;">
+                        <span style="font-size: 11px;">Single Output (Screen Only)</span>
+                        <input type="checkbox" id="chk-single-output" onchange="toggleAutoStart('single')">
+                    </div>
+                    <div class="toggle-badge" style="background: #1a1a1c; border-color: #333; margin-bottom: 0; padding: 8px; flex: 1;">
+                        <span style="font-size: 11px;">Dual Output (Screen+Network)</span>
+                        <input type="checkbox" id="chk-dual-output" onchange="toggleAutoStart('dual')">
+                    </div>
+                </div>
+
+                <label style="margin-bottom:2px;">Format</label>
+                <select id="stream-format" onchange="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
+                    <option value="RTMP">RTMP Streaming (YouTube, Facebook, Twitch, Ustream)</option>
+                    <option value="UDP">UDP Multicast Streaming (Local Network)</option>
+                    <option value="RTSP">RTSP Streaming Output</option>
+                    <option value="HLS">HLS Segmented Output</option>
+                </select>
+
+                <div class="input-row" style="margin-bottom:0;">
+                    <div>
+                        <label style="margin-bottom:2px;">Video Bitrate</label>
+                        <input type="text" id="stream-vbitrate" placeholder="e.g. 1.5M, 800K" value="1.5M" oninput="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
+                    </div>
+                    <div>
+                        <label style="margin-bottom:2px;">Audio Bitrate</label>
+                        <input type="text" id="stream-abitrate" placeholder="e.g. 128K, 64K" value="128K" oninput="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
+                    </div>
+                </div>
+
+                <label style="margin-bottom:2px;">Publishing Point (URL)</label>
+                <input type="text" id="stream-url" placeholder="rtmp://..." oninput="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
+
+                <label style="margin-bottom:2px;">Stream Key (If Applicable)</label>
+                <input type="text" id="stream-key" placeholder="Your stream key..." oninput="saveStreamSettings()" style="padding:6px; margin-bottom:6px; font-size:12px;">
+
+                <div style="display:flex; gap:8px; margin-top:5px;">
+                    <button type="button" class="action-btn" style="background:#28a745; flex:1; padding:10px; font-size:13px;" onclick="startNativeStream(false)"><i class="fa-solid fa-play"></i> START STREAM</button>
+                    <button type="button" class="action-btn" style="background:#ff453a; flex:1; padding:10px; font-size:13px;" onclick="stopNativeStream()"><i class="fa-solid fa-stop"></i> STOP STREAM</button>
+                </div>
+
+                <div id="stream-status-console" class="stream-status-box">
+                    State: <span id="stream-state-text">Stopped</span><br>
+                    <span id="publishing-point-text" style="font-weight:normal; font-size:11px;">Publishing Point: None</span>
+                </div>
             </div>
 
             <div id="form-controls" class="form-group">
@@ -440,6 +494,40 @@ NEWS</textarea>
             localStorage.setItem('mytv_device_id', localDeviceId);
         }
 
+        function saveStreamSettings() {
+            localStorage.setItem('mytv_stream_format', document.getElementById('stream-format').value);
+            localStorage.setItem('mytv_stream_vbitrate', document.getElementById('stream-vbitrate').value);
+            localStorage.setItem('mytv_stream_abitrate', document.getElementById('stream-abitrate').value);
+            localStorage.setItem('mytv_stream_url', document.getElementById('stream-url').value);
+            localStorage.setItem('mytv_stream_key', document.getElementById('stream-key').value);
+            localStorage.setItem('mytv_stream_dual', document.getElementById('chk-dual-output').checked);
+            localStorage.setItem('mytv_stream_single', document.getElementById('chk-single-output').checked);
+        }
+
+        function loadStreamSettings() {
+            if(localStorage.getItem('mytv_stream_format')) document.getElementById('stream-format').value = localStorage.getItem('mytv_stream_format');
+            if(localStorage.getItem('mytv_stream_vbitrate')) document.getElementById('stream-vbitrate').value = localStorage.getItem('mytv_stream_vbitrate');
+            if(localStorage.getItem('mytv_stream_abitrate')) document.getElementById('stream-abitrate').value = localStorage.getItem('mytv_stream_abitrate');
+            if(localStorage.getItem('mytv_stream_url')) document.getElementById('stream-url').value = localStorage.getItem('mytv_stream_url');
+            if(localStorage.getItem('mytv_stream_key')) document.getElementById('stream-key').value = localStorage.getItem('mytv_stream_key');
+            
+            if(localStorage.getItem('mytv_stream_single') !== null) {
+                document.getElementById('chk-single-output').checked = (localStorage.getItem('mytv_stream_single') === 'true');
+            }
+            if(localStorage.getItem('mytv_stream_dual') !== null) {
+                document.getElementById('chk-dual-output').checked = (localStorage.getItem('mytv_stream_dual') === 'true');
+            }
+        }
+
+        window.toggleAutoStart = function(type) {
+            if (type === 'single' && document.getElementById('chk-single-output').checked) {
+                document.getElementById('chk-dual-output').checked = false;
+            } else if (type === 'dual' && document.getElementById('chk-dual-output').checked) {
+                document.getElementById('chk-single-output').checked = false;
+            }
+            saveStreamSettings();
+        };
+
         function getBg(id1, id2, chkId) {
             const chk = document.getElementById(chkId);
             if (chk && chk.checked) return 'transparent';
@@ -624,6 +712,50 @@ NEWS</textarea>
             }
         };
 
+        window.startNativeStream = function(isAutoStart = false) {
+            const format = document.getElementById('stream-format').value;
+            const vBitrate = document.getElementById('stream-vbitrate').value.trim() || "1.5M";
+            const aBitrate = document.getElementById('stream-abitrate').value.trim() || "128K";
+            const url = document.getElementById('stream-url').value.trim();
+            const key = document.getElementById('stream-key').value.trim();
+            const isDual = document.getElementById('chk-dual-output').checked;
+
+            if (isDual && url) {
+                const displayUrl = key ? `${url}/${key}` : url;
+                const consoleBox = document.getElementById('stream-status-console');
+                const stateText = document.getElementById('stream-state-text');
+                const ptText = document.getElementById('publishing-point-text');
+                
+                consoleBox.classList.add('active');
+                stateText.textContent = "eMS_Running";
+                ptText.textContent = `Target: ${displayUrl} | V: ${vBitrate} | A: ${aBitrate} (${format})`;
+
+                if (window.AndroidBridge && window.AndroidBridge.startStreamingFull) {
+                    window.AndroidBridge.startStreamingFull(format, url, key, vBitrate, aBitrate);
+                } else if (window.AndroidBridge && window.AndroidBridge.startStreaming) {
+                    window.AndroidBridge.startStreaming(format, displayUrl);
+                }
+            }
+            
+            if (window.AndroidBridge && window.AndroidBridge.launchPlayout) {
+                window.AndroidBridge.launchPlayout();
+            } else {
+                window.location.href = 'https://chanb-three.vercel.app/channel.html?code=' + activeOperator + '&op=' + activeOperator;
+            }
+        };
+
+        window.stopNativeStream = function() {
+            const consoleBox = document.getElementById('stream-status-console');
+            const stateText = document.getElementById('stream-state-text');
+            
+            consoleBox.classList.remove('active');
+            stateText.textContent = "Stopped";
+            
+            if (window.AndroidBridge && window.AndroidBridge.stopStreaming) {
+                window.AndroidBridge.stopStreaming();
+            }
+        };
+
         const inputUrl = document.getElementById('input-url'); 
         const inputStart = document.getElementById('input-start'); 
         const inputDuration = document.getElementById('input-duration'); 
@@ -760,14 +892,6 @@ NEWS</textarea>
                 return; 
             }
 
-            const maxDevices = (opData.max_devices !== null && opData.max_devices !== undefined) ? opData.max_devices : 1;
-            if (maxDevices <= 0) {
-                loadDiv.style.display = 'none';
-                errDiv.innerText = "Contact Admin.";
-                errDiv.style.display = 'block';
-                return;
-            }
-
             const { data: devData, error: devErr } = await db.from('operator_devices').select('*').eq('operator_code', code);
             if (devErr) {
                 loadDiv.style.display = 'none'; errDiv.innerText = "Database Error"; errDiv.style.display = 'block'; return; 
@@ -776,9 +900,10 @@ NEWS</textarea>
             const isAlreadyRegistered = devData.find(d => d.device_id === localDeviceId);
 
             if (!isAlreadyRegistered) {
+                const maxDevices = opData.max_devices || 1;
                 if (devData.length >= maxDevices) {
                     loadDiv.style.display = 'none';
-                    errDiv.innerText = `Contact Admin.`;
+                    errDiv.innerText = `Device limit reached (${maxDevices}/${maxDevices}). Contact Admin.`;
                     errDiv.style.display = 'block';
                     return;
                 }
@@ -801,6 +926,18 @@ NEWS</textarea>
             document.getElementById('display-code').textContent = code;
             
             await loadData();
+
+            // --- AUTO START ENGINE ---
+            const isSingle = document.getElementById('chk-single-output').checked;
+            const isDual = document.getElementById('chk-dual-output').checked;
+            const hasAutoStarted = sessionStorage.getItem('mytv_has_auto_started');
+
+            if (!hasAutoStarted && (isSingle || isDual)) {
+                sessionStorage.setItem('mytv_has_auto_started', 'true');
+                setTimeout(() => {
+                    startNativeStream(true); 
+                }, 1500);
+            }
         }
 
         const dataList = document.getElementById('data-list'); 
@@ -819,7 +956,7 @@ NEWS</textarea>
             const saveWrapperVideo = document.getElementById('master-save-wrapper-video');
             const saveWrapperControls = document.getElementById('master-save-wrapper-controls');
 
-            const formMap = { 'video': 'form-video', 'promo': 'form-promo', 'controls': 'form-controls', 'text': 'form-text' };
+            const formMap = { 'video': 'form-video', 'promo': 'form-promo', 'controls': 'form-controls', 'text': 'form-text', 'stream': 'form-stream' };
             const targetForm = formMap[type] || 'form-text';
             
             document.getElementById(targetForm).classList.add('active'); 
@@ -829,6 +966,10 @@ NEWS</textarea>
                 saveWrapperControls.style.display = 'block';
                 adminCard.classList.add('full-height');
                 setTimeout(resizePreview, 60); 
+            } else if (type === 'stream') {
+                saveWrapperVideo.style.display = 'none';
+                saveWrapperControls.style.display = 'none';
+                adminCard.classList.remove('full-height');
             } else { 
                 document.getElementById(targetForm).appendChild(saveWrapperVideo);
                 saveWrapperVideo.style.display = 'block';
@@ -840,13 +981,15 @@ NEWS</textarea>
                 }
             }
             
-            document.getElementById('table-wrapper').style.display = (type === 'controls') ? 'none' : 'block';
+            document.getElementById('table-wrapper').style.display = (type === 'controls' || type === 'stream') ? 'none' : 'block';
             
-            loadData().then(() => {
-                setTimeout(() => {
-                    document.querySelectorAll('.form-group.active textarea').forEach(el => autoResizeTextarea(el));
-                }, 50);
-            });
+            if(type !== 'stream') {
+                loadData().then(() => {
+                    setTimeout(() => {
+                        document.querySelectorAll('.form-group.active textarea').forEach(el => autoResizeTextarea(el));
+                    }, 50);
+                });
+            }
         };
 
         function startEditMode(id) {
@@ -1225,10 +1368,11 @@ NEWS</textarea>
         cancelEditBtn.onclick = resetForm;
         
         setTimeout(() => {
+            loadStreamSettings(); 
             const savedCode = localStorage.getItem('mytv_saved_operator_code');
             if(savedCode) {
-                const opInputEl = document.getElementById('op-code-input');
-                if (opInputEl) opInputEl.value = savedCode;
+                const opInput = document.getElementById('op-code-input');
+                if (opInput) opInput.value = savedCode;
                 loginOperator();
             }
         }, 100);
