@@ -235,9 +235,9 @@
                 imgEl.style.display = 'block';
                 imgEl.style.animation = 'none'; 
                 imgEl.offsetHeight; 
-                imgEl.style.animation = 'fadeInOut 10s infinite';
+                imgEl.style.animation = 'fadeInOut 20s infinite';
                 
-                imageSliderInterval = setTimeout(moveToNext, 10000);
+                imageSliderInterval = setTimeout(moveToNext, 20000);
             };
             
             const moveToNext = () => { imageSlideIndex = (imageSlideIndex + 1) % data.sliderPlaylist.length; updateSlide(); };
@@ -274,6 +274,14 @@
                 applyMediaLayer(s.logo_channel_url, document.getElementById('logo-img'));
             }
 
+            const promoSlider = document.getElementById('top-image-slider'); 
+            if(promoSlider && data.sliderPlaylist.length > 0) {
+                promoSlider.style.display = s.show_promo ? 'block' : 'none';
+                promoSlider.style.transform = `translate(${s.slider_x || 0}px, ${s.slider_y || 0}px)`; 
+                if(s.banner_h) promoSlider.style.height = s.banner_h + 'px';
+                if(s.banner_w) promoSlider.style.width = s.banner_w + 'px';
+            }
+            
             const clock = document.getElementById('clock-container'); const clockDisplay = document.getElementById('display');
             if(clock) {
                 clock.style.display = s.show_clock ? 'flex' : 'none';
